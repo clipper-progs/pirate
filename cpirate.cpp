@@ -33,10 +33,12 @@ int main( int argc, char** argv )
   clipper::String opcol_hl = "NONE";
   clipper::String opcol_fc = "NONE";
   clipper::String biasmode = "bias";  // DEPRECATED
+  bool acontent = false;
   bool unbias   = false;
   bool evaluate = false;
   bool strictfr = false;
-  double filter_radius = 9.0;  // Radius of local mean in Angstroms
+  double filter_rad1 = 9.0;    // Initial radius of local mean in Angstroms
+  double filter_rad2 = 3.0;    // Final   radius of local mean in Angstroms
   double wt_expllk = 1.0;      // Scale factor for exp llk
   double wt_mapllk = 0.1;      // Scale factor for map llk
   double wt_ramp = 0.0;        // Ramp factor for weights
@@ -89,20 +91,24 @@ int main( int argc, char** argv )
       if ( ++arg < args.size() ) wt_mapllk = clipper::String(args[arg]).f();
     } else if ( args[arg] == "-weight-ramp" ) {
       if ( ++arg < args.size() ) wt_ramp = clipper::String(args[arg]).f();
+    } else if ( args[arg] == "-stats-radius" ) {
+      if ( ++arg < args.size() ) {
+	filter_rad1 = clipper::String(args[arg]).split(",").front().f();
+	filter_rad2 = clipper::String(args[arg]).split(",").back().f();
+      }
     } else if ( args[arg] == "-skew-content" ) {
       if ( ++arg < args.size() ) {
-	clipper::String vals = args[arg]+","+args[arg];  // fix for missing arg
-	skew_mean = vals.split(",")[0].f();
-	skew_sigm = vals.split(",")[1].f();
+	skew_mean = clipper::String(args[arg]).split(",").front().f();
+	skew_sigm = clipper::String(args[arg]).split(",").back().f();
       }
+    } else if ( args[arg] == "-auto-content" ) {
+      acontent = true;
     } else if ( args[arg] == "-unbias" ) {
-      unbias = true;
+      unbias   = true;
     } else if ( args[arg] == "-evaluate" ) {
       evaluate = true;
     } else if ( args[arg] == "-strict-free" ) {
       strictfr = true;
-    } else if ( args[arg] == "-stats-radius" ) {
-      if ( ++arg < args.size() ) filter_radius = clipper::String(args[arg]).f();
     } else if ( args[arg] == "-resolution" ) {
       if ( ++arg < args.size() ) res_in = clipper::String(args[arg]).f();
     } else if ( args[arg] == "-verbose" ) {
@@ -115,7 +121,7 @@ int main( int argc, char** argv )
     }
   }
   if ( args.size() <= 1 ) {
-    std::cout << "\nUsage: cpirate\n\t-mtzin-ref <filename>\t\tCOMPULSORY\n\t-mtzin-wrk <filename>\t\tCOMPULSORY\n\t-mtzout <filename>\n\t-colin-ref-fo <colpath>\n\t-colin-ref-hl <colpath>\n\t-colin-wrk-fo <colpath>\t\tCOMPULSORY\n\t-colin-wrk-hl <colpath>\t\tCOMPULSORY\n\t-colin-wrk-free <colpath>\n\t-colout <colpath>\n\t-colout-hl <colpath>\n\t-colout-fc <colpath>\n\t-ncycles <cycles>\n\t-weight-expllk <weight>\n\t-weight-mapllk <weight>\n\t-weight-ramp <weight>\n\t-unbias\n\t-evaluate\n\t-strict-free\n\t-stats-radius <radius/A>\n\t-resolution <resolution/A>\n\t-seed <seed>\nAn input mtz are specified for both reference and work structures.\nFor the reference structure, F's and calc HL coefficients are required.\nFor the work structure, F's and HL coefficients are required.\nAll output data and the reference structure inputs default correctly.\n";
+    std::cout << "\nUsage: cpirate\n\t-mtzin-ref <filename>\t\tCOMPULSORY\n\t-mtzin-wrk <filename>\t\tCOMPULSORY\n\t-mtzout <filename>\n\t-colin-ref-fo <colpath>\n\t-colin-ref-hl <colpath>\n\t-colin-wrk-fo <colpath>\t\tCOMPULSORY\n\t-colin-wrk-hl <colpath>\t\tCOMPULSORY\n\t-colin-wrk-free <colpath>\n\t-colout <colpath>\n\t-colout-hl <colpath>\n\t-colout-fc <colpath>\n\t-ncycles <cycles>\n\t-weight-expllk <weight>\n\t-weight-mapllk <weight>\n\t-weight-ramp <weight>\n\t-resolution <resolution/A>\n\t-stats-radius <radius/A>,<radius/A>\n\t-skew-content <factor>,<factor>\n\t-auto-content\n\t-unbias\n\t-evaluate\n\t-strict-free\n\t-seed <seed>\nAn input mtz are specified for both reference and work structures.\nFor the reference structure, F's and calc HL coefficients are required.\nFor the work structure, F's and HL coefficients are required.\nAll output data and the reference structure inputs default correctly.\n";
     exit(1);
   }
 
@@ -187,19 +193,63 @@ int main( int argc, char** argv )
   clipper::HKL_data<clipper::data32::F_phi> fphi( hkls );
   clipper::HKL_data<clipper::data32::ABCD> abcd_new( hkls );    
 
-  // method objects
+  // DO INITIAL MAP SIMULATION
+
   MapSimulate mapsim( 100, 20 );
-  Refine_HL_simulate phaseref( unbias, centre_radius, filter_radius,
-			       wt_mapllk, wt_ramp,
-			       skew_mean, skew_sigm, n_bins_mean, n_bins_sigm,
-			       12, oversampling );
-  if ( verbose >= 10 ) phaseref.debug();
-
-  // DO PHASE IMPROVEMENT CYCLE
-
-  // do simulation
   mapsim( sim_f, sim_hl, ref_f, ref_hl, fobs, abcd );
+  double filter_radius = filter_rad1;
+
+  // DO AUTOMATIC PARAMETER DETERMINATION
+
+  if ( acontent ) {
+    double y[] = { -1.0, -1.0, -1.0 };
+    double x[] = { -0.5,  0.0,  0.5 };
+    for ( int ccyc = 0; ccyc < 3; ccyc++ ) {
+      for ( int cpar = 0; cpar < 3; cpar++ ) if ( y[cpar] < 0.0 ) {
+	skew_mean = skew_sigm = x[cpar];
+	Refine_HL_simulate phaseref( unbias, centre_radius, filter_radius,
+				     wt_mapllk, wt_ramp, skew_mean, skew_sigm,
+				     n_bins_mean, n_bins_sigm, 12, 1.25 );
+	phaseref( fphi, abcd_new, fsig, fobs, abcd, sim_f, ref_hl, sim_hl );
+	y[cpar] = phaseref.e_correl_free();
+      }
+      if      ( y[0] > y[1] && y[0] > y[2] ) { x[1] = x[0]; y[1] = y[0]; }
+      else if ( y[2] > y[1] && y[2] > y[0] ) { x[1] = x[2]; y[1] = y[2]; }
+      double dx = 0.25 * ( x[2] - x[0] );
+      x[0] = x[1] - dx; x[2] = x[1] + dx;
+      y[0] = y[2] = -1.0;
+    }
+    double skew_base = x[1];
+    x[0] = -0.1; x[1] = 0.0; x[2] = 0.1;
+    for ( int ccyc = 0; ccyc < 2; ccyc++ ) {
+      for ( int cpar = 0; cpar < 3; cpar++ ) if ( y[cpar] < 0.0 ) {
+	skew_mean = skew_base - x[cpar];
+	skew_sigm = skew_base + x[cpar];
+	Refine_HL_simulate phaseref( unbias, centre_radius, filter_radius,
+				     wt_mapllk, wt_ramp, skew_mean, skew_sigm,
+				     n_bins_mean, n_bins_sigm, 12, 1.25 );
+	phaseref( fphi, abcd_new, fsig, fobs, abcd, sim_f, ref_hl, sim_hl );
+	y[cpar] = phaseref.e_correl_free();
+      }
+      if      ( y[0] > y[1] && y[0] > y[2] ) { x[1] = x[0]; y[1] = y[0]; }
+      else if ( y[2] > y[1] && y[2] > y[0] ) { x[1] = x[2]; y[1] = y[2]; }
+      double dx = 0.25 * ( x[2] - x[0] );
+      x[0] = x[1] - dx; x[2] = x[1] + dx;
+      y[0] = y[2] = -1.0;
+    }
+    skew_mean = skew_base - x[1];
+    skew_sigm = skew_base + x[1];
+    std::cout << "\nAutomatic content fitting:\n Skew by: " << skew_mean << "," << skew_sigm << " (dense, ordered)\n";
+  }
+
+
+  // DO FIRST PHASE IMPROVEMENT CYCLE
+
   // do phase refinement calc
+  Refine_HL_simulate phaseref( unbias, centre_radius, filter_radius,
+			       wt_mapllk, wt_ramp, skew_mean, skew_sigm,
+			       n_bins_mean, n_bins_sigm, 12, oversampling );
+  if ( verbose >= 10 ) phaseref.debug();
   phaseref( fphi, abcd_new, fsig, fobs, abcd, sim_f, ref_hl, sim_hl );
   // output stats
   std::cout << "\nUnbiased results from initial cycle:"
@@ -215,9 +265,14 @@ int main( int argc, char** argv )
   for ( int cyc = 1; cyc < ncycles; cyc++ ) {
     // update starting point
     for ( ih = abcd.first(); !ih.last(); ih.next() ) abcd[ih] = abcd_new[ih];
-    // do simulation (REMOVING THIS STEP DOESN'T MAKE MUCH DIFFERENCE)
+    filter_radius += (filter_rad2-filter_rad1)/double(ncycles-1);
+
+    // update simulation (REMOVING THIS STEP DOESN'T MAKE MUCH DIFFERENCE)
     mapsim( sim_f, sim_hl, ref_f, ref_hl, fobs, abcd );
     // do phase refinement calc
+    Refine_HL_simulate phaseref( unbias, centre_radius, filter_radius,
+				 wt_mapllk, wt_ramp, skew_mean, skew_sigm,
+				 n_bins_mean, n_bins_sigm, 12, oversampling );
     if ( strictfr )
       phaseref( fphi, abcd_new, fsig, fobs, abcd, sim_f, ref_hl, sim_hl );
     else

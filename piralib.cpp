@@ -509,10 +509,10 @@ bool Refine_HL_coeff::operator()
     eo( fobs.base_hkl_info() ), ec( fobs.base_hkl_info() );
   double nw, nf, lw, lf, rw, rf, dw, df, l1, l2;
   double fo1, fc1, eo1, ec1;
-  double sow, sof, scw, scf, soow, soof, sccw, sccf, socw, socf; 
+  double eow, eof, ecw, ecf, eoow, eoof, eccw, eccf, eocw, eocf; 
   double fow, fof, fcw, fcf, foow, foof, fccw, fccf, focw, focf; 
   nw = nf = lw = lf = rw = rf = dw = df = 0.0;
-  sow = sof = scw = scf = soow = soof = sccw = sccf = socw = socf = 0.0; 
+  eow = eof = ecw = ecf = eoow = eoof = eccw = eccf = eocw = eocf = 0.0; 
   fow = fof = fcw = fcf = foow = foof = fccw = fccf = focw = focf = 0.0; 
   xtgt.curv( fphi, grad, curv );
   // first get most probable F's to predict E's
@@ -537,8 +537,8 @@ bool Refine_HL_coeff::operator()
       fm = llk_max( fphi[ih], grad[ih], curv[ih], f2, llkscale_ );
       fo1 = eo[ih].E();
       fc1 = ec[ih].E();
-      eo1 = fo1 * sqrt( scalefosq.f(ih) );
-      ec1 = fc1 * sqrt( scalefcsq.f(ih) );
+      eo1 = fo1 * sqrt( clipper::Util::max( scalefosq.f(ih), 0.0 ) );
+      ec1 = fc1 * sqrt( clipper::Util::max( scalefcsq.f(ih), 0.0 ) );
       // calc R, R-free, LLK, LLK-free
       qmap = llk_dist( fphi[ih], grad[ih], curv[ih], f2, llkscale_,
 		       ih.hkl_class(), fobs[ih].f() );
@@ -552,11 +552,11 @@ bool Refine_HL_coeff::operator()
 	lw += log( l1/l2 );
 	rw += fabs( fm - fobs[ih].f() );
 	dw += fobs[ih].f();
-	sow += eo1;
-	scw += ec1;
-	soow += eo1 * eo1;
-	sccw += ec1 * ec1;
-	socw += eo1 * ec1;
+	eow += eo1;
+	ecw += ec1;
+	eoow += eo1 * eo1;
+	eccw += ec1 * ec1;
+	eocw += eo1 * ec1;
 	fow += fo1;
 	fcw += fc1;
 	foow += fo1 * fo1;
@@ -567,11 +567,11 @@ bool Refine_HL_coeff::operator()
 	lf += log( l1/l2 );
 	rf += fabs( fm - fobs[ih].f() );
 	df += fobs[ih].f();
-	sof += eo1;
-	scf += ec1;
-	soof += eo1 * eo1;
-	sccf += ec1 * ec1;
-	socf += eo1 * ec1;
+	eof += eo1;
+	ecf += ec1;
+	eoof += eo1 * eo1;
+	eccf += ec1 * ec1;
+	eocf += eo1 * ec1;
 	fof += fo1;
 	fcf += fc1;
 	foof += fo1 * fo1;
@@ -584,8 +584,8 @@ bool Refine_HL_coeff::operator()
   std::map<std::string,double> result;
   rfac_w = rw/dw;
   rfac_f = (nf>0.0)?(rf/df):0.0;
-  ecor_w = (socw*nw-sow*scw) / sqrt((soow*nw-sow*sow)*(sccw*nw-scw*scw));
-  ecor_f = (nf>0.0)?((socf*nf-sof*scf) / sqrt((soof*nf-sof*sof)*(sccf*nf-scf*scf))):0.0;
+  ecor_w = (eocw*nw-eow*ecw) / sqrt((eoow*nw-eow*eow)*(eccw*nw-ecw*ecw));
+  ecor_f = (nf>0.0)?((eocf*nf-eof*ecf) / sqrt((eoof*nf-eof*eof)*(eccf*nf-ecf*ecf))):0.0;
   fcor_w = (focw*nw-fow*fcw) / sqrt((foow*nw-fow*fow)*(fccw*nw-fcw*fcw));
   fcor_f = (nf>0.0)?((focf*nf-fof*fcf) / sqrt((foof*nf-fof*fof)*(fccf*nf-fcf*fcf))):0.0;
   llkg_w = lw/nw;
@@ -963,7 +963,7 @@ bool MapSimulate::operator()
   std::vector<double> params( n_scl_param, 1.0 );
   // scale reference data
   std::vector<double> ref_list_res;
-  clipper::BasisFn_spline ref_basis( ref_hkl, n_scl_param, 2.0 );
+  clipper::BasisFn_spline ref_basis( ref_e, n_scl_param, 2.0 );
   clipper::TargetFn_scaleEsq<clipper::data32::E_sigE> ref_target( ref_e );
   clipper::ResolutionFn ref_scale( ref_hkl, ref_basis, ref_target, params );
   for ( ih = ref_hkl.first(); !ih.last(); ih.next() )
@@ -973,7 +973,7 @@ bool MapSimulate::operator()
     }
   // scale work data
   std::vector<double> wrk_list_res;
-  clipper::BasisFn_spline wrk_basis( wrk_hkl, n_scl_param, 2.0 );
+  clipper::BasisFn_spline wrk_basis( wrk_e, n_scl_param, 2.0 );
   clipper::TargetFn_scaleEsq<clipper::data32::E_sigE> wrk_target( wrk_e );
   clipper::ResolutionFn wrk_scale( wrk_hkl, wrk_basis, wrk_target, params );
   for ( ih = wrk_hkl.first(); !ih.last(); ih.next() )
