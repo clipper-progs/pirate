@@ -137,7 +137,7 @@
 #include	<sys/types.h>
 #include	<sys/stat.h>
 #include	<errno.h>
-
+#include "config.h"
 #ifdef DIRENT
 #	include	<dirent.h>
 #	define	RECURSIVE		1
@@ -147,7 +147,7 @@
 #	include	<sys/dir.h>
 #	define	RECURSIVE		1
 #endif
-#ifdef UTIME_H
+#ifdef HAVE_UTIME_H
 #	include	<utime.h>
 #else
 	struct utimbuf {
