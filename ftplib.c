@@ -59,7 +59,7 @@
 #endif
 
 #if defined(__osf__)
-#define SOCKLEN_TYPE unsigned int
+#define SOCKLEN_TYPE int
 #else
 #define SOCKLEN_TYPE socklen_t
 #endif
@@ -96,7 +96,7 @@ struct NetBuf {
 static char *version =
     "ftplib Release 3.1-1 9/16/00, copyright 1996-2000 Thomas Pfau";
 
-GLOBALDEF int ftplib_debug = 0;
+int ftplib_debug = 0;
 
 #if defined(__unix__) || defined(VMS) || defined (__APPLE__) || defined (unix)
 #define net_read read
@@ -360,7 +360,7 @@ static int readresp(char c, netbuf *nControl)
 /*
  * FtpInit for stupid operating systems that require it (Windows NT)
  */
-GLOBALDEF void FtpInit(void)
+void FtpInit(void)
 {
 #if defined(_WIN32)
     WORD wVersionRequested;
@@ -375,7 +375,7 @@ GLOBALDEF void FtpInit(void)
 /*
  * FtpLastResponse - return a pointer to the last response received
  */
-GLOBALDEF char *FtpLastResponse(netbuf *nControl)
+char *FtpLastResponse(netbuf *nControl)
 {
     if ((nControl) && (nControl->dir == FTPLIB_CONTROL))
     	return nControl->response;
@@ -387,7 +387,7 @@ GLOBALDEF char *FtpLastResponse(netbuf *nControl)
  *
  * return 1 if connected, 0 if not
  */
-GLOBALDEF int FtpConnect(const char *host, netbuf **nControl)
+int FtpConnect(const char *host, netbuf **nControl)
 {
     int sControl;
     struct sockaddr_in sin;
@@ -496,7 +496,7 @@ GLOBALDEF int FtpConnect(const char *host, netbuf **nControl)
  *
  * returns 1 if successful, 0 on error
  */
-GLOBALDEF int FtpOptions(int opt, long val, netbuf *nControl)
+int FtpOptions(int opt, long val, netbuf *nControl)
 {
     int v,rv=0;
     switch (opt)
@@ -559,7 +559,7 @@ static int FtpSendCmd(const char *cmd, char expresp, netbuf *nControl)
  *
  * return 1 if logged in, 0 otherwise
  */
-GLOBALDEF int FtpLogin(const char *user, const char *pass, netbuf *nControl)
+int FtpLogin(const char *user, const char *pass, netbuf *nControl)
 {
     char tempbuf[64];
 
@@ -800,7 +800,7 @@ static int FtpAcceptConnection(netbuf *nData, netbuf *nControl)
  *
  * return 1 if successful, 0 otherwise
  */
-GLOBALDEF int FtpAccess(const char *path, int typ, int mode, netbuf *nControl,
+int FtpAccess(const char *path, int typ, int mode, netbuf *nControl,
     netbuf **nData)
 {
     char buf[256];
@@ -871,7 +871,7 @@ GLOBALDEF int FtpAccess(const char *path, int typ, int mode, netbuf *nControl,
 /*
  * FtpRead - read from a data connection
  */
-GLOBALDEF int FtpRead(void *buf, int max, netbuf *nData)
+int FtpRead(void *buf, int max, netbuf *nData)
 {
     int i;
     if (nData->dir != FTPLIB_READ)
@@ -904,7 +904,7 @@ GLOBALDEF int FtpRead(void *buf, int max, netbuf *nData)
 /*
  * FtpWrite - write to a data connection
  */
-GLOBALDEF int FtpWrite(void *buf, int len, netbuf *nData)
+int FtpWrite(void *buf, int len, netbuf *nData)
 {
     int i;
     if (nData->dir != FTPLIB_WRITE)
@@ -934,7 +934,7 @@ GLOBALDEF int FtpWrite(void *buf, int len, netbuf *nData)
 /*
  * FtpClose - close a data connection
  */
-GLOBALDEF int FtpClose(netbuf *nData)
+int FtpClose(netbuf *nData)
 {
     netbuf *ctrl;
     switch (nData->dir)
@@ -974,7 +974,7 @@ GLOBALDEF int FtpClose(netbuf *nData)
  *
  * return 1 if command successful, 0 otherwise
  */
-GLOBALDEF int FtpSite(const char *cmd, netbuf *nControl)
+int FtpSite(const char *cmd, netbuf *nControl)
 {
     char buf[256];
     
@@ -995,7 +995,7 @@ GLOBALDEF int FtpSite(const char *cmd, netbuf *nControl)
  *
  * return 1 if command successful, 0 otherwise
  */
-GLOBALDEF int FtpSysType(char *buf, int max, netbuf *nControl)
+int FtpSysType(char *buf, int max, netbuf *nControl)
 {
     int l = max;
     char *b = buf;
@@ -1014,7 +1014,7 @@ GLOBALDEF int FtpSysType(char *buf, int max, netbuf *nControl)
  *
  * return 1 if successful, 0 otherwise
  */
-GLOBALDEF int FtpMkdir(const char *path, netbuf *nControl)
+int FtpMkdir(const char *path, netbuf *nControl)
 {
     char buf[256];
 
@@ -1031,7 +1031,7 @@ GLOBALDEF int FtpMkdir(const char *path, netbuf *nControl)
  *
  * return 1 if successful, 0 otherwise
  */
-GLOBALDEF int FtpChdir(const char *path, netbuf *nControl)
+int FtpChdir(const char *path, netbuf *nControl)
 {
     char buf[256];
 
@@ -1048,7 +1048,7 @@ GLOBALDEF int FtpChdir(const char *path, netbuf *nControl)
  *
  * return 1 if successful, 0 otherwise
  */
-GLOBALDEF int FtpCDUp(netbuf *nControl)
+int FtpCDUp(netbuf *nControl)
 {
     if (!FtpSendCmd("CDUP",'2',nControl))
 	return 0;
@@ -1060,7 +1060,7 @@ GLOBALDEF int FtpCDUp(netbuf *nControl)
  *
  * return 1 if successful, 0 otherwise
  */
-GLOBALDEF int FtpRmdir(const char *path, netbuf *nControl)
+int FtpRmdir(const char *path, netbuf *nControl)
 {
     char buf[256];
 
@@ -1077,7 +1077,7 @@ GLOBALDEF int FtpRmdir(const char *path, netbuf *nControl)
  *
  * return 1 if successful, 0 otherwise
  */
-GLOBALDEF int FtpPwd(char *path, int max, netbuf *nControl)
+int FtpPwd(char *path, int max, netbuf *nControl)
 {
     int l = max;
     char *b = path;
@@ -1161,7 +1161,7 @@ static int FtpXfer(const char *localfile, const char *path,
  *
  * return 1 if successful, 0 otherwise
  */
-GLOBALDEF int FtpNlst(const char *outputfile, const char *path,
+int FtpNlst(const char *outputfile, const char *path,
 	netbuf *nControl)
 {
     return FtpXfer(outputfile, path, nControl, FTPLIB_DIR, FTPLIB_ASCII);
@@ -1172,7 +1172,7 @@ GLOBALDEF int FtpNlst(const char *outputfile, const char *path,
  *
  * return 1 if successful, 0 otherwise
  */
-GLOBALDEF int FtpDir(const char *outputfile, const char *path, netbuf *nControl)
+int FtpDir(const char *outputfile, const char *path, netbuf *nControl)
 {
     return FtpXfer(outputfile, path, nControl, FTPLIB_DIR_VERBOSE, FTPLIB_ASCII);
 }
@@ -1182,7 +1182,7 @@ GLOBALDEF int FtpDir(const char *outputfile, const char *path, netbuf *nControl)
  *
  * return 1 if successful, 0 otherwise
  */
-GLOBALDEF int FtpSize(const char *path, int *size, char mode, netbuf *nControl)
+int FtpSize(const char *path, int *size, char mode, netbuf *nControl)
 {
     char cmd[256];
     int resp,sz,rv=1;
@@ -1210,7 +1210,7 @@ GLOBALDEF int FtpSize(const char *path, int *size, char mode, netbuf *nControl)
  *
  * return 1 if successful, 0 otherwise
  */
-GLOBALDEF int FtpModDate(const char *path, char *dt, int max, netbuf *nControl)
+int FtpModDate(const char *path, char *dt, int max, netbuf *nControl)
 {
     char buf[256];
     int rv = 1;
@@ -1230,7 +1230,7 @@ GLOBALDEF int FtpModDate(const char *path, char *dt, int max, netbuf *nControl)
  *
  * return 1 if successful, 0 otherwise
  */
-GLOBALDEF int FtpGet(const char *outputfile, const char *path,
+int FtpGet(const char *outputfile, const char *path,
 	char mode, netbuf *nControl)
 {
     return FtpXfer(outputfile, path, nControl, FTPLIB_FILE_READ, mode);
@@ -1241,7 +1241,7 @@ GLOBALDEF int FtpGet(const char *outputfile, const char *path,
  *
  * return 1 if successful, 0 otherwise
  */
-GLOBALDEF int FtpPut(const char *inputfile, const char *path, char mode,
+int FtpPut(const char *inputfile, const char *path, char mode,
 	netbuf *nControl)
 {
     return FtpXfer(inputfile, path, nControl, FTPLIB_FILE_WRITE, mode);
@@ -1252,7 +1252,7 @@ GLOBALDEF int FtpPut(const char *inputfile, const char *path, char mode,
  *
  * return 1 if successful, 0 otherwise
  */
-GLOBALDEF int FtpRename(const char *src, const char *dst, netbuf *nControl)
+int FtpRename(const char *src, const char *dst, netbuf *nControl)
 {
     char cmd[256];
 
@@ -1273,7 +1273,7 @@ GLOBALDEF int FtpRename(const char *src, const char *dst, netbuf *nControl)
  *
  * return 1 if successful, 0 otherwise
  */
-GLOBALDEF int FtpDelete(const char *fnm, netbuf *nControl)
+int FtpDelete(const char *fnm, netbuf *nControl)
 {
     char cmd[256];
 
@@ -1290,7 +1290,7 @@ GLOBALDEF int FtpDelete(const char *fnm, netbuf *nControl)
  *
  * return 1 if successful, 0 otherwise
  */
-GLOBALDEF void FtpQuit(netbuf *nControl)
+void FtpQuit(netbuf *nControl)
 {
     if (nControl->dir != FTPLIB_CONTROL)
 	return;
