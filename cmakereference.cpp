@@ -9,7 +9,11 @@
 #include "ccp4-extras.h"
 
 extern "C" {
-#include <unistd.h>
+#if defined _MSC_VER
+	#include <io.h>
+#else
+	#include <unistd.h>
+#endif
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -62,7 +66,7 @@ int main( int argc, char** argv )
     }
   }
   if ( args.size() <= 1 ) {
-    std::cout << "Usage: cmakereference\n\t-pdbid <accession-code>\n\t-pdbfile <.ent.Z-file>\n\t-rflfile <.ent.Z-file>\n\t-resolution <reso>\n\tGenerate reference structure for pirate.\nIf no .ent.Z files are given, they are fetched by ftp if possible.\n";
+    std::cout << "Usage: cmakereference\n\t-pdbid <accession-code>\n\t-pdbin <.ent.Z-file>\n\t-cifin <.ent.Z-file>\n\t-resolution <reso>\n\tGenerate reference structure for pirate.\nIf no .ent.Z files are given, they are fetched by ftp if possible.\n";
     exit(1);
   }
 
@@ -138,8 +142,8 @@ int main( int argc, char** argv )
   std::cout << "Decompressing coordinates...\n\n";
   clipper::String pdbfile = pdbfilez.substr( 0, pdbfilez.length() - 2 );
   fdip = open( pdbfilez.c_str(), O_RDONLY );
-  if ( fdip < 0 ) clipper::Message::message( nordc );
-  fdop = creat( pdbfile.c_str(), S_IRUSR|S_IWUSR );
+  if ( fdip < 0 ) clipper::Message::message( nordc ); 
+  fdop = open( pdbfile.c_str(), O_CREAT|O_WRONLY|O_TRUNC, S_IREAD|S_IWRITE );
   if ( fdop < 0 ) clipper::Message::message( nowrc );
   decompress( fdip, fdop );
   close( fdip );
@@ -149,7 +153,7 @@ int main( int argc, char** argv )
   clipper::String rflfile = rflfilez.substr( 0, rflfilez.length() - 2 );
   fdip = open( rflfilez.c_str(), O_RDONLY );
   if ( fdip < 0 ) clipper::Message::message( nordc );
-  fdop = creat( rflfile.c_str(), S_IRUSR|S_IWUSR );
+  fdop = open( rflfile.c_str(), O_CREAT|O_WRONLY|O_TRUNC, S_IREAD|S_IWRITE );
   if ( fdop < 0 ) clipper::Message::message( nowrc );
   decompress( fdip, fdop );
   close( fdip );
@@ -241,6 +245,7 @@ int main( int argc, char** argv )
       r1w += fabs( Fo - Fc );
       f1w += Fo;
     }
+
   r1f /= clipper::Util::max( f1f, 0.1 );
   r1w /= clipper::Util::max( f1w, 0.1 );
   std::cout << "\n R-factor      : " << r1w << "\n";
