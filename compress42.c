@@ -11,6 +11,12 @@
  *   Peter Jannesen, Network Communication Systems
  *                       (peter@ncs.nl)
  *
+ * Revision unlabelled: 04/11/02 cowtan@ysbl.york.ac.uk
+ *   Add config.h for autoconf inclusion of HAVE_UTIME_H
+ *
+ * Revision unlabelled: 04/10/12 cowtan@ysbl.york.ac.uk
+ *   Reduce to minimal subset for slow decompression.
+ *
  * Revision 4.2.3  92/03/14 peter@ncs.nl
  *   Optimise compress and decompress function and a lot of cleanups.
  *   New fast hash algoritme added (if more than 800Kb available).
@@ -137,7 +143,9 @@
 #include	<sys/types.h>
 #include	<sys/stat.h>
 #include	<errno.h>
+
 #include "config.h"
+
 #ifdef DIRENT
 #	include	<dirent.h>
 #	define	RECURSIVE		1
@@ -233,44 +241,8 @@
  * machine variants which require cc -Dmachine:  pdp11, z8000, DOS
  */
 
-#ifdef interdata	/* Perkin-Elmer													*/
-#	define SIGNED_COMPARE_SLOW	/* signed compare is slower than unsigned 			*/
-#endif
-
-#ifdef pdp11	 	/* PDP11: don't forget to compile with -i 						*/
-#	define	BITS 		12	/* max bits/code for 16-bit machine 					*/
-#	define	NO_UCHAR		/* also if "unsigned char" functions as signed char 	*/
-#endif /* pdp11 */
-
-#ifdef z8000		/* Z8000: 														*/
-#	define	BITS 	12	/* 16-bits processor max 12 bits							*/
-#	undef	vax			/* weird preprocessor 										*/
-#endif /* z8000 */
-
-#ifdef	DOS			/* PC/XT/AT (8088) processor									*/
-#	define	BITS   16	/* 16-bits processor max 12 bits							*/
-#	if BITS == 16
-#		define	MAXSEG_64K
-#	endif
-#	undef	BYTEORDER
-#	define	BYTEORDER 	4321
-#	undef	NOALLIGN
-#	define	NOALLIGN	1
-#	define	COMPILE_DATE	__DATE__
-#endif /* DOS */
-
 #ifndef	O_BINARY
 #	define	O_BINARY	0	/* System has no binary mode							*/
-#endif
-
-#ifdef M_XENIX			/* Stupid compiler can't handle arrays with */
-#	if BITS == 16 		/* more than 65535 bytes - so we fake it */
-# 		define MAXSEG_64K
-#	else
-#	if BITS > 13			/* Code only handles BITS = 12, 13, or 16 */
-#		define BITS	13
-#	endif
-#	endif
 #endif
 
 #ifndef BITS		/* General processor calculate BITS								*/
@@ -340,89 +312,6 @@ typedef	unsigned char	char_type;
 
 #define MAXCODE(n)	(1L << (n))
 
-#ifndef	REGISTERS
-#	define	REGISTERS	2
-#endif
-#define	REG1	
-#define	REG2	
-#define	REG3	
-#define	REG4	
-#define	REG5	
-#define	REG6	
-#define	REG7	
-#define	REG8	
-#define	REG9	
-#define	REG10
-#define	REG11	
-#define	REG12	
-#define	REG13
-#define	REG14
-#define	REG15
-#define	REG16
-#if REGISTERS >= 1
-#	undef	REG1
-#	define	REG1	register
-#endif
-#if REGISTERS >= 2
-#	undef	REG2
-#	define	REG2	register
-#endif
-#if REGISTERS >= 3
-#	undef	REG3
-#	define	REG3	register
-#endif
-#if REGISTERS >= 4
-#	undef	REG4
-#	define	REG4	register
-#endif
-#if REGISTERS >= 5
-#	undef	REG5
-#	define	REG5	register
-#endif
-#if REGISTERS >= 6
-#	undef	REG6
-#	define	REG6	register
-#endif
-#if REGISTERS >= 7
-#	undef	REG7
-#	define	REG7	register
-#endif
-#if REGISTERS >= 8
-#	undef	REG8
-#	define	REG8	register
-#endif
-#if REGISTERS >= 9
-#	undef	REG9
-#	define	REG9	register
-#endif
-#if REGISTERS >= 10
-#	undef	REG10
-#	define	REG10	register
-#endif
-#if REGISTERS >= 11
-#	undef	REG11
-#	define	REG11	register
-#endif
-#if REGISTERS >= 12
-#	undef	REG12
-#	define	REG12	register
-#endif
-#if REGISTERS >= 13
-#	undef	REG13
-#	define	REG13	register
-#endif
-#if REGISTERS >= 14
-#	undef	REG14
-#	define	REG14	register
-#endif
-#if REGISTERS >= 15
-#	undef	REG15
-#	define	REG15	register
-#endif
-#if REGISTERS >= 16
-#	undef	REG16
-#	define	REG16	register
-#endif
 
 
 union	bytes
@@ -455,7 +344,7 @@ union	bytes
 						}
 #else
 #ifdef BYTEORDER
-#define	output(b,o,c,n)	{	REG1 char_type	*p = &(b)[(o)>>3];				\
+#define	output(b,o,c,n)	{	char_type	*p = &(b)[(o)>>3];				\
 							union bytes i;									\
 							i.word = ((long)(c))<<((o)&0x7);				\
 							p[0] |= i.bytes.b1;								\
@@ -464,8 +353,8 @@ union	bytes
 							(o) += (n);										\
 						}
 #else
-#define	output(b,o,c,n)	{	REG1 char_type	*p = &(b)[(o)>>3];				\
-							REG2 long		 i = ((long)(c))<<((o)&0x7);	\
+#define	output(b,o,c,n)	{	char_type	*p = &(b)[(o)>>3];				\
+							long		 i = ((long)(c))<<((o)&0x7);	\
 							p[0] |= (char_type)(i);							\
 							p[1] |= (char_type)(i>>8);						\
 							p[2] |= (char_type)(i>>16);						\
@@ -479,7 +368,7 @@ union	bytes
 							(o) += (n);										\
 						}
 #else
-#define	input(b,o,c,n,m){	REG1 char_type 		*p = &(b)[(o)>>3];			\
+#define	input(b,o,c,n,m){	char_type 		*p = &(b)[(o)>>3];			\
 							(c) = ((((long)(p[0]))|((long)(p[1])<<8)|		\
 									 ((long)(p[2])<<16))>>((o)&0x7))&(m);	\
 							(o) += (n);										\
@@ -511,56 +400,7 @@ int				fgnd_flag = 0;		/* Running in background (SIGINT=SIGIGN)		*/
 long 			bytes_in;			/* Total number of byte from input				*/
 long 			bytes_out;			/* Total number of byte to output				*/
 
-/*
- * 8086 & 80286 Has a problem with array bigger than 64K so fake the array
- * For processors with a limited address space and segments.
- */
-/*
- * To save much memory, we overlay the table used by compress() with those
- * used by decompress().  The tab_prefix table is the same size and type
- * as the codetab.  The tab_suffix table needs 2**BITS characters.  We
- * get this from the beginning of htab.  The output stack uses the rest
- * of htab, and contains characters.  There is plenty of room for any
- * possible stack (stack used to be 8000 characters).
- */
-#ifdef MAXSEG_64K
-	count_int htab0[8192];
-	count_int htab1[8192];
-	count_int htab2[8192];
-	count_int htab3[8192];
-	count_int htab4[8192];
-	count_int htab5[8192];
-	count_int htab6[8192];
-	count_int htab7[8192];
-	count_int htab8[HSIZE-65536];
-	count_int * htab[9] = {htab0,htab1,htab2,htab3,htab4,htab5,htab6,htab7,htab8};
-
-	unsigned short code0tab[16384];
-	unsigned short code1tab[16384];
-	unsigned short code2tab[16384];
-	unsigned short code3tab[16384];
-	unsigned short code4tab[16384];
-	unsigned short * codetab[5] = {code0tab,code1tab,code2tab,code3tab,code4tab};
-
-#	define	htabof(i)			(htab[(i) >> 13][(i) & 0x1fff])
-#	define	codetabof(i)		(codetab[(i) >> 14][(i) & 0x3fff])
-#	define	tab_prefixof(i)		codetabof(i)
-#	define	tab_suffixof(i)		((char_type *)htab[(i)>>15])[(i) & 0x7fff]
-#	define	de_stack			((char_type *)(&htab2[8191]))
-	void	clear_htab()
-	{
-		memset(htab0, -1, sizeof(htab0));
-		memset(htab1, -1, sizeof(htab1));
-		memset(htab2, -1, sizeof(htab2));
-		memset(htab3, -1, sizeof(htab3));
-		memset(htab4, -1, sizeof(htab4));
-		memset(htab5, -1, sizeof(htab5));
-		memset(htab6, -1, sizeof(htab6));
-		memset(htab7, -1, sizeof(htab7));
-		memset(htab8, -1, sizeof(htab8));
-	 }
-#	define	clear_tab_prefixof()	memset(code0tab, 0, 256);
-#else	/* Normal machine */
+/* Normal machine */
 	count_int		htab[HSIZE];
 	unsigned short	codetab[HSIZE];
 
@@ -571,7 +411,7 @@ long 			bytes_out;			/* Total number of byte to output				*/
 #	define	de_stack				((char_type *)&(htab[HSIZE-1]))
 #	define	clear_htab()			memset(htab, -1, sizeof(htab))
 #	define	clear_tab_prefixof()	memset(codetab, 0, 256);
-#endif	/* MAXSEG_64K */
+
 
 void  	decompress		ARGS((int,int));
 void  	read_error		ARGS((void));
@@ -588,22 +428,22 @@ void 	abort_compress	ARGS((void));
 
 void
 decompress(int fdin, int fdout)
-	{
-	    REG2 	char_type 		*stackp;
-	    REG3	code_int		 code;
-    	REG4	int				 finchar;
-		REG5	code_int		 oldcode;
-		REG6	code_int		 incode;
-		REG7	int				 inbits;
-		REG8	int				 posbits;
-		REG9	int				 outpos;
-		REG10	int				 insize;
-		REG11	int				 bitmask;
-		REG12	code_int		 free_ent;
-		REG13	code_int		 maxcode;
-		REG14	code_int		 maxmaxcode;
-		REG15	int				 n_bits;
-		REG16	int				 rsize;
+{
+  char_type 	*stackp;
+  code_int	 code;
+  int		 finchar;
+  code_int	 oldcode;
+  code_int	 incode;
+  int		 inbits;
+  int		 posbits;
+  int		 outpos;
+  int		 insize;
+  int		 bitmask;
+  code_int	 free_ent;
+  code_int	 maxcode;
+  code_int	 maxmaxcode;
+  int		 n_bits;
+  int		 rsize;
 
 		bytes_in = 0;
 		bytes_out = 0;
@@ -660,7 +500,7 @@ decompress(int fdin, int fdout)
 		{
 resetbuf:	;
 			{
-				REG1	 int	i;
+				int	i;
 				int				e;
 				int				o;
 
@@ -727,7 +567,7 @@ resetbuf:	;
 				{
 					if (code > free_ent)
 					{
-						REG1 char_type 		*p;
+						char_type 		*p;
 
 						posbits -= n_bits;
 						p = &inbuf[posbits>>3];
@@ -753,7 +593,7 @@ resetbuf:	;
 			/* And put them out in forward order */
 
 				{
-					REG1 int	i;
+					int	i;
 
 					if (outpos+(i = (de_stack-stackp)) >= OBUFSIZ)
 					{
