@@ -79,10 +79,10 @@ template<int N> void MiniHist<N>::llk_curv( const double& x, double& func, doubl
   func = log( func );
 }
 
-template MiniHist<16>;
-template MiniHist<24>;
-template MiniHist<32>;
-template MiniHist<48>;
+template class MiniHist<16>;
+template class MiniHist<24>;
+template class MiniHist<32>;
+template class MiniHist<48>;
 
 
 
