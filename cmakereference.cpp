@@ -9,14 +9,19 @@
 #include "ccp4-extras.h"
 
 extern "C" {
-#include "ftplib.c"
-#include "compress42.c"
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include "ftplib.h"               // ftp client lib
+extern void decompress(int,int);  // decompress lib
 }
-#undef min
- 
+
 int main( int argc, char** argv )
 {
   CCP4program prog( "cmakereference", "0.1", "$Date: 2004/09/01" );
+
+  std::cout << "\n  This program includes a modified version of ftplib\n  by Thomas Pfau (see http://nbpfaus.net/~pfau/ftplib/),\n  and a portion of the public domain 'ncompress' code.\n  It is distributed under CCP4 part 0 or LGPL.\n\n";
 
   // defaults
   clipper::String pdbid = "NONE";
