@@ -24,7 +24,7 @@
 #if !defined(__FTPLIB_H)
 #define __FTPLIB_H
 
-#if defined(__unix__) || defined(VMS) || defined (__APPLE__)
+#if defined(__unix__) || defined(VMS) || defined (__APPLE__) || defined (unix)
 #define GLOBALDEF
 #define GLOBALREF extern
 #elif defined(_WIN32)
