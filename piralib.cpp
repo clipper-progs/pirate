@@ -26,11 +26,11 @@ template<int N> MiniHist<N>::MiniHist( const clipper::Histogram& hist )
       x0 = s * ( hist.x(i) - hist.min()) / hist.range();
       for ( int j = 0; j < params.size(); j++ ) {
 	x1 = double(j) + 0.5 + d;
-	w[j] = exp( -2.0*pow(x0-x1, 2.0 ) );
+	w[j] = exp( -2.0 * clipper::Util::sqr( x0-x1 ) );
       }
       f = 0.0;
       for ( int j = 0; j < params.size(); j++ ) f += params[j] * w[j];
-      val += pow( f - hist.y(i), 2.0 );
+      val += clipper::Util::sqr( f - hist.y(i) );
       for ( int j = 0; j < params.size(); j++ ) {
 	grad[j] += 2.0 * ( f - hist.y(i) ) * w[j];
 	for ( int k = 0; k < params.size(); k++ )
@@ -48,7 +48,7 @@ template<int N> MiniHist<N>::MiniHist( const clipper::Histogram& hist )
   for ( int i = 0; i < N; i++ )
     f = clipper::Util::max( f, params[i] );
   for ( int i = 0; i < N; i++ )
-    data[i] = clipper::Util::intr( 255 * pow( params[i]/f, 0.5 ) );
+    data[i] = clipper::Util::intr( 255 * sqrt( params[i]/f ) );
 }
 
 template<int N> void MiniHist<N>::func_curv( const double& x, double& func, double& grad, double& curv ) const
@@ -225,7 +225,7 @@ void Xmap_target_minihist::curv( const clipper::HKL_data<clipper::data32::F_phi>
 
   // calc and scale gradient
   xmap.fft_to( grad );
-  scale *= 2.0 / pow( xmap.cell().volume(), 2.0 );
+  scale *= 2.0 / clipper::Util::sqr( xmap.cell().volume() );
   clipper::HKL_info::HKL_reference_index ih;
   for ( ih = fphi.first(); !ih.last(); ih.next() )
     grad[ih].f() *= scale * xmap.spacegroup().num_symops() /
@@ -256,9 +256,9 @@ void Xmap_target_minihist::curv( const clipper::HKL_data<clipper::data32::F_phi>
 	caa +=  fp.f() * c;
 	cbb +=  fp.f() * c;
       }
-    curv[ih].curv_aa() = caa * scale / pow( ih.hkl_class().epsilonc(), 2.0 );
-    curv[ih].curv_bb() = cbb * scale / pow( ih.hkl_class().epsilonc(), 2.0 );
-    curv[ih].curv_ab() = cab * scale / pow( ih.hkl_class().epsilonc(), 2.0 );
+    curv[ih].curv_aa()=caa*scale/clipper::Util::sqr(ih.hkl_class().epsilonc());
+    curv[ih].curv_bb()=cbb*scale/clipper::Util::sqr(ih.hkl_class().epsilonc());
+    curv[ih].curv_ab()=cab*scale/clipper::Util::sqr(ih.hkl_class().epsilonc());
   }
 }
 
@@ -288,7 +288,7 @@ double Xmap_target_gaussian::func( const clipper::HKL_data<clipper::data32::F_ph
   typedef clipper::Xmap<float>::Map_reference_index MRI;
   double fn = 0.0;
   for ( MRI ix = xmap.first(); !ix.last(); ix.next() )
-    fn += weight[ix] * pow( xmap[ix] - target[ix], 2.0 )
+    fn += weight[ix] * clipper::Util::sqr( xmap[ix] - target[ix] )
       * xmap.spacegroup().num_symops() / xmap.multiplicity( ix.coord() );
   fn *= scale / xmap.grid_sampling().size();
   return fn;
@@ -313,7 +313,7 @@ void Xmap_target_gaussian::curv( const clipper::HKL_data<clipper::data32::F_phi>
   for ( MRI ix = xmap.first(); !ix.last(); ix.next() )
     xmap[ix] = 2.0 * weight[ix]*( xmap[ix] - target[ix] );
   xmap.fft_to( grad );
-  scale *= 2.0 / pow( xmap.cell().volume(), 2.0 );
+  scale *= 2.0 / clipper::Util::sqr( xmap.cell().volume() );
   for ( HRI ih = fphi.first(); !ih.last(); ih.next() )
     grad[ih].f() *= scale * xmap.spacegroup().num_symops() /
       ih.hkl_class().epsilonc();
@@ -349,9 +349,9 @@ void Xmap_target_gaussian::curv( const clipper::HKL_data<clipper::data32::F_phi>
 	caa +=  fp.f() * c;
 	cbb +=  fp.f() * c;
       }
-    curv[ih].curv_aa() = caa * scale / pow( ih.hkl_class().epsilonc(), 2.0 );
-    curv[ih].curv_bb() = cbb * scale / pow( ih.hkl_class().epsilonc(), 2.0 );
-    curv[ih].curv_ab() = cab * scale / pow( ih.hkl_class().epsilonc(), 2.0 );
+    curv[ih].curv_aa()=caa*scale/clipper::Util::sqr(ih.hkl_class().epsilonc());
+    curv[ih].curv_bb()=cbb*scale/clipper::Util::sqr(ih.hkl_class().epsilonc());
+    curv[ih].curv_ab()=cab*scale/clipper::Util::sqr(ih.hkl_class().epsilonc());
   }
 }
 
@@ -389,8 +389,9 @@ float llk_max( const clipper::data32::F_phi& fphi, const ArgGrad& grad, const Ar
   daa += dww;
   dbb += dww;
   // calculate most probable F
-  return sqrt( ( pow(dbb*da-dab*db,2.0) + pow(daa*db-dab*da,2.0) )
-	       / pow(daa*dbb-dab*dab,2.0) );
+  return sqrt( ( clipper::Util::sqr(dbb*da-dab*db) +
+		 clipper::Util::sqr(daa*db-dab*da) )
+	       / clipper::Util::sqr(daa*dbb-dab*dab) );
 }
 
 // calculate llk distribution for a given F (with Wilson constrib)
@@ -720,7 +721,7 @@ Map_local_moment_ordinal::Map_local_moment_ordinal( const clipper::Xmap<float>& 
   typedef clipper::Xmap<float>::Map_reference_index MRI;
   clipper::Xmap<float> xmap2( xmap );
   for ( MRI ix = xmap2.first(); !ix.last(); ix.next() )
-    xmap2[ix] = pow( xmap2[ix], 2.0 );
+    xmap2[ix] = clipper::Util::sqr( xmap2[ix] );
 
   // now calculate local mom1, local mom1 squared
   clipper::MapFilter_fft<float> fltr( fn, 1.0, clipper::MapFilter_fft<float>::Relative );
@@ -729,7 +730,7 @@ Map_local_moment_ordinal::Map_local_moment_ordinal( const clipper::Xmap<float>& 
 
   // calculate std deviation
   for ( MRI ix = lmom1.first(); !ix.last(); ix.next() )
-    lmom2[ix] = sqrt( lmom2[ix] - pow( lmom1[ix], 2.0 ) );
+    lmom2[ix] = sqrt( lmom2[ix] - clipper::Util::sqr( lmom1[ix] ) );
 
   // work out ordinals for map distributions
   std::vector<double> vals;
@@ -924,6 +925,8 @@ bool Refine_HL_simulate::operator() (
       refine.debug( abcd, fsig, xtarget );
     }
   }
+
+  return true;
 }
 
 
@@ -1067,7 +1070,7 @@ bool MapSimulate::operator()
     double fom = ref_phi[ih].fom();
     if ( ih.hkl_class().centric() ) {  // deal with centrics
       double prob = 0.5 * ( 1.0 + fom );
-      if ( (0.001*double(random()%1000)) < prob )
+      if ( (0.001*double(rand()%1000)) < prob )
 	dphi = 0.0;
       else
 	dphi = clipper::Util::pi();
@@ -1075,9 +1078,9 @@ bool MapSimulate::operator()
       int i;
       double x = clipper::Util::invsim( fom );
       for ( i = 0; i < 100; i++ ) {
-	dphi = clipper::Util::twopi()*(0.001*double(random()%1000));
+	dphi = clipper::Util::twopi()*(0.001*double(rand()%1000));
 	double prob = exp(x*(cos(dphi)-1.0));
-	if ( (0.001*double(random()%1000)) < prob ) break;
+	if ( (0.001*double(rand()%1000)) < prob ) break;
       }
       if ( i == 100 ) dphi = 0.0;
     }

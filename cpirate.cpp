@@ -11,7 +11,7 @@
 
 int main( int argc, char** argv )
 {
-  CCP4program prog( "cpirate", "0.1.2", "$Date: 2004/07/01" );
+  CCP4program prog( "cpirate", "0.2.1", "$Date: 2004/09/01" );
 
   std::cout << "\nCopyright 2003-2004 Kevin Cowtan and University of York\n";
   std::cout << "All rights reserved. Please reference:\n";
@@ -55,7 +55,6 @@ int main( int argc, char** argv )
   const int n_bins_mean = 9;
   const int n_bins_sigm = 9;
   const int bin_min = 1000;
-  const int n_hist = 50;
 
   // command input
   CommandInput args( argc, argv, true );
@@ -185,7 +184,7 @@ int main( int argc, char** argv )
   }
 
   // other params
-  srandom( seed );
+  srand( seed );
 
   // result objects
   clipper::HKL_data<clipper::data32::F_sigF> sim_f( hkls_ref );
@@ -270,7 +269,7 @@ int main( int argc, char** argv )
     // update simulation (REMOVING THIS STEP DOESN'T MAKE MUCH DIFFERENCE)
     mapsim( sim_f, sim_hl, ref_f, ref_hl, fobs, abcd );
     // do phase refinement calc
-    Refine_HL_simulate phaseref( unbias, centre_radius, filter_radius,
+    Refine_HL_simulate phaseref( false, centre_radius, filter_radius,
 				 wt_mapllk, wt_ramp, skew_mean, skew_sigm,
 				 n_bins_mean, n_bins_sigm, 12, oversampling );
     if ( strictfr )
