@@ -21,7 +21,7 @@
 /* 									   */
 /***************************************************************************/
 
-#if defined(__unix__) || defined(__VMS)
+#if defined(__unix__) || defined(__VMS) || defined (__APPLE__)
 #include <unistd.h>
 #endif
 #if defined(_WIN32)
@@ -32,7 +32,7 @@
 #include <string.h>
 #include <errno.h>
 #include <ctype.h>
-#if defined(__unix__)
+#if defined(__unix__) || defined (__APPLE__)
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -92,7 +92,7 @@ static char *version =
 
 GLOBALDEF int ftplib_debug = 0;
 
-#if defined(__unix__) || defined(VMS)
+#if defined(__unix__) || defined(VMS) || defined (__APPLE__)
 #define net_read read
 #define net_write write
 #define net_close close
