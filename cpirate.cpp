@@ -8,6 +8,7 @@
 #include "ccp4-extras.h"
 #include <time.h>
 
+
 int main( int argc, char** argv )
 {
   CCP4program prog( "cpirate", "0.2.1", "$Date: 2004/09/01" );
@@ -167,7 +168,9 @@ int main( int argc, char** argv )
 
   // apply free flag
   clipper::HKL_data<clipper::data32::F_sigF> fsig = fobs;
-  {using namespace clipper::datatypes ; fsig.mask( flag != 0 ); }
+  { using namespace clipper::datatypes;  // 'using' for irix6.5
+    fsig.mask( flag != 0 );
+  }
 
   // apply llk scale
   clipper::HKL_info::HKL_reference_index ih;
