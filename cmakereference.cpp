@@ -12,7 +12,8 @@ extern "C" {
 #include "ftplib.c"
 #include "compress42.c"
 }
-
+#undef min
+ 
 int main( int argc, char** argv )
 {
   CCP4program prog( "cmakereference", "0.1", "$Date: 2004/09/01" );
