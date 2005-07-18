@@ -10,9 +10,9 @@
 
 extern "C" {
 #if defined _MSC_VER
-	#include <io.h>
+ #include <io.h>
 #else
-	#include <unistd.h>
+ #include <unistd.h>
 #endif
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -91,9 +91,6 @@ int main( int argc, char** argv )
   if ( ptrscr != NULL )
     tmpdir = std::string(ptrscr);
 
-  // provide instructions
-  std::cout << "\nAttempting to connect to EBI/MSD for file download. If this step fails, use \nyour preferred ftp client to fetch the files, then re-run giving the \nfilenames as arguments, or use the EBI/MSD website.\n\nftp " << host << "\n" << user << "\n" << pass << "\nbinary\ncd " << pdbdir << "\nget pdb" << pdbid << ".ent.Z\ncd " << rfldir << "\nget r" << pdbid << "sf.ent.Z\nquit\n\n";
-
   // messages
   clipper::Message_fatal noserver( "Unable to connect to server. Try manual ftp and give filenames." );
   clipper::Message_fatal nologin( "Unable to login to server. Try manual ftp and give filenames." );
@@ -104,6 +101,9 @@ int main( int argc, char** argv )
 
   // ftp the files, if required
   if ( pdbfilez == "NONE" || rflfilez == "NONE" ) {
+
+    // provide instructions
+    std::cout << "\nAttempting to connect to EBI/MSD for file download. If this step fails, use \nyour preferred ftp client to fetch the files, then re-run giving the \nfilenames as arguments, or use the EBI/MSD website.\n\nftp " << host << "\n" << user << "\n" << pass << "\nbinary\ncd " << pdbdir << "\nget pdb" << pdbid << ".ent.Z\ncd " << rfldir << "\nget r" << pdbid << "sf.ent.Z\nquit\n\n";
 
     netbuf *pbuf;
     int err;
@@ -142,7 +142,7 @@ int main( int argc, char** argv )
   std::cout << "Decompressing coordinates...\n\n";
   clipper::String pdbfile = pdbfilez.substr( 0, pdbfilez.length() - 2 );
   fdip = open( pdbfilez.c_str(), O_RDONLY );
-  if ( fdip < 0 ) clipper::Message::message( nordc ); 
+  if ( fdip < 0 ) clipper::Message::message( nordc );
   fdop = open( pdbfile.c_str(), O_CREAT|O_WRONLY|O_TRUNC, S_IREAD|S_IWRITE );
   if ( fdop < 0 ) clipper::Message::message( nowrc );
   decompress( fdip, fdop );
@@ -245,7 +245,6 @@ int main( int argc, char** argv )
       r1w += fabs( Fo - Fc );
       f1w += Fo;
     }
-
   r1f /= clipper::Util::max( f1f, 0.1 );
   r1w /= clipper::Util::max( f1w, 0.1 );
   std::cout << "\n R-factor      : " << r1w << "\n";
