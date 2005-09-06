@@ -1,7 +1,8 @@
 // Clipper pirate
-/* Copyright 2003-2004 Kevin Cowtan & University of York all rights reserved */
+/* Copyright 2003-2005 Kevin Cowtan & University of York all rights reserved */
 
 #include <clipper/clipper-ccp4.h>
+#include <clipper/clipper-mmdb.h>
 #include <clipper/clipper-contrib.h>
 #include <ccp4_program.h>
 #include "piralib.h"
@@ -11,9 +12,9 @@
 
 int main( int argc, char** argv )
 {
-  CCP4program prog( "cpirate", "0.2.1", "$Date: 2004/09/01" );
+  CCP4program prog( "cpirate", "0.3.0", "$Date: 2005/08/05" );
 
-  std::cout << "\nCopyright 2003-2004 Kevin Cowtan and University of York\n";
+  std::cout << "\nCopyright 2003-2005 Kevin Cowtan and University of York\n";
   std::cout << "All rights reserved. Please reference:\n";
   std::cout << " Cowtan K. (2000) Acta Cryst. D56, 1612-1621.\n";
 
@@ -28,17 +29,21 @@ int main( int argc, char** argv )
   clipper::String ipcol_wrk_fo = "NONE";
   clipper::String ipcol_wrk_hl = "NONE";
   clipper::String ipcol_wrk_fr = "NONE";
+  clipper::String ipcol_wrk_xx = "NONE";
+  clipper::String ipfile_ha = "NONE";
   clipper::String opfile = "pirate.mtz";
   clipper::String opcol = "pirate";
   clipper::String opcol_hl = "NONE";
   clipper::String opcol_fc = "NONE";
-  clipper::String biasmode = "bias";  // DEPRECATED
+  std::vector<Local_rtop> ncsops;
   bool acontent = false;
   bool unbias   = false;
   bool evaluate = false;
   bool strictfr = false;
   double filter_rad1 = 9.0;    // Initial radius of local mean in Angstroms
   double filter_rad2 = 3.0;    // Final   radius of local mean in Angstroms
+  double ncs_radius = 6.0;     // Radius of NCS local correlation
+  double ncs_volume = 1.0;     // Number of ASUs to allow for NCS
   double wt_expllk = 1.0;      // Scale factor for exp llk
   double wt_mapllk = 0.1;      // Scale factor for map llk
   double wt_ramp = 0.0;        // Ramp factor for weights
@@ -64,6 +69,8 @@ int main( int argc, char** argv )
       if ( ++arg < args.size() ) ipfile_ref = args[arg];
     } else if ( args[arg] == "-mtzin-wrk" ) {
       if ( ++arg < args.size() ) ipfile_wrk = args[arg];
+    } else if ( args[arg] == "-pdbin-ha" ) {
+      if ( ++arg < args.size() ) ipfile_ha = args[arg];
     } else if ( args[arg] == "-mtzout" ) {
       if ( ++arg < args.size() ) opfile = args[arg];
     } else if ( args[arg] == "-colin-ref-fo" ) {
@@ -76,6 +83,8 @@ int main( int argc, char** argv )
       if ( ++arg < args.size() ) ipcol_wrk_hl = args[arg];
     } else if ( args[arg] == "-colin-wrk-free" ) {
       if ( ++arg < args.size() ) ipcol_wrk_fr = args[arg];
+    } else if ( args[arg] == "-colin-wrk-solved-fc" ) {
+      if ( ++arg < args.size() ) ipcol_wrk_xx = args[arg];
     } else if ( args[arg] == "-colout" ) {
       if ( ++arg < args.size() ) opcol = args[arg];
     } else if ( args[arg] == "-colout-hl" ) {
@@ -110,17 +119,37 @@ int main( int argc, char** argv )
       strictfr = true;
     } else if ( args[arg] == "-resolution" ) {
       if ( ++arg < args.size() ) res_in = clipper::String(args[arg]).f();
-    } else if ( args[arg] == "-verbose" ) {
-      if ( ++arg < args.size() ) verbose = clipper::String(args[arg]).i();
+    } else if ( args[arg] == "-ncs-radius" ) {
+      if ( ++arg < args.size() ) ncs_radius = clipper::String(args[arg]).f();
+    } else if ( args[arg] == "-ncs-volume" ) {
+      if ( ++arg < args.size() ) ncs_volume = clipper::String(args[arg]).f();
+    } else if ( args[arg] == "-ncs-operator" ) {
+      if ( ++arg < args.size() ) {
+	std::vector<clipper::String> op = clipper::String(args[arg]).split(",");
+	if ( op.size() == 9 ) {
+	  clipper::Euler_ccp4 eul( clipper::Util::d2rad(op[0].f64()),
+				   clipper::Util::d2rad(op[1].f64()),
+				   clipper::Util::d2rad(op[2].f64()) );
+	  clipper::Coord_orth src( op[3].f64(), op[4].f64(), op[5].f64() );
+	  clipper::Coord_orth tgt( op[6].f64(), op[7].f64(), op[8].f64() );
+	  clipper::Rotation rot( eul );
+	  ncsops.push_back( Local_rtop( rot, src, tgt ) );
+	} else {
+	  std::cout << "\nInvalid ncs operator:\t" << args[arg] << "\n";
+	  args.clear();
+	}
+      }
     } else if ( args[arg] == "-seed" ) {
       if ( ++arg < args.size() ) seed = clipper::String(args[arg]).i();
+    } else if ( args[arg] == "-verbose" ) {
+      if ( ++arg < args.size() ) verbose = clipper::String(args[arg]).i();
     } else {
       std::cout << "\nUnrecognized:\t" << args[arg] << "\n";
       args.clear();
     }
   }
   if ( args.size() <= 1 ) {
-    std::cout << "\nUsage: cpirate\n\t-mtzin-ref <filename>\t\tCOMPULSORY\n\t-mtzin-wrk <filename>\t\tCOMPULSORY\n\t-mtzout <filename>\n\t-colin-ref-fo <colpath>\n\t-colin-ref-hl <colpath>\n\t-colin-wrk-fo <colpath>\t\tCOMPULSORY\n\t-colin-wrk-hl <colpath>\t\tCOMPULSORY\n\t-colin-wrk-free <colpath>\n\t-colout <colpath>\n\t-colout-hl <colpath>\n\t-colout-fc <colpath>\n\t-ncycles <cycles>\n\t-weight-expllk <weight>\n\t-weight-mapllk <weight>\n\t-weight-ramp <weight>\n\t-resolution <resolution/A>\n\t-stats-radius <radius/A>,<radius/A>\n\t-skew-content <factor>,<factor>\n\t-auto-content\n\t-unbias\n\t-evaluate\n\t-strict-free\n\t-seed <seed>\nAn input mtz are specified for both reference and work structures.\nFor the reference structure, F's and calc HL coefficients are required.\nFor the work structure, F's and HL coefficients are required.\nAll output data and the reference structure inputs default correctly.\n";
+    std::cout << "\nUsage: cpirate\n\t-mtzin-ref <filename>\t\tCOMPULSORY\n\t-mtzin-wrk <filename>\t\tCOMPULSORY\n\t-pdbin-ha <filename>\n\t-mtzout <filename>\n\t-colin-ref-fo <colpath>\n\t-colin-ref-hl <colpath>\n\t-colin-wrk-fo <colpath>\t\tCOMPULSORY\n\t-colin-wrk-hl <colpath>\t\tCOMPULSORY\n\t-colin-wrk-free <colpath>\n\t-colout <colpath>\n\t-colout-hl <colpath>\n\t-colout-fc <colpath>\n\t-ncycles <cycles>\n\t-weight-expllk <weight>\n\t-weight-mapllk <weight>\n\t-weight-ramp <weight>\n\t-resolution <resolution/A>\n\t-stats-radius <radius/A>,<radius/A>\n\t-skew-content <factor>,<factor>\n\t-auto-content\n\t-unbias\n\t-evaluate\n\t-strict-free\n\t-ncs-volume <factor>\n\t-ncs-radius <radius>\n\t-ncs-operator <alpha>,<beta>,<gamma>,<x>,<y>,<z>,<x>,<y>,<z>\n\t-seed <seed>\nAn input mtz are specified for both reference and work structures.\nFor the reference structure, F's and calc HL coefficients are required.\nFor the work structure, F's and HL coefficients are required.\nAll output data and the reference structure inputs default correctly.\n";
     exit(1);
   }
 
@@ -160,9 +189,11 @@ int main( int argc, char** argv )
   clipper::HKL_data<clipper::data32::F_sigF> fobs( hkls );
   clipper::HKL_data<clipper::data32::ABCD>   abcd( hkls );
   clipper::HKL_data<clipper::data32::Flag>   flag( hkls );
+  clipper::HKL_data<clipper::data32::F_phi>  fphi( hkls );
   mtzfile.import_hkl_data( fobs, ipcol_wrk_fo );
   mtzfile.import_hkl_data( abcd, ipcol_wrk_hl );
   if ( ipcol_wrk_fr != "NONE" ) mtzfile.import_hkl_data( flag, ipcol_wrk_fr );
+  if ( ipcol_wrk_xx != "NONE" ) mtzfile.import_hkl_data( fphi, ipcol_wrk_xx );
   clipper::String oppath = mtzfile.assigned_paths()[0].notail() + "/";
   mtzfile.close_read();
 
@@ -185,13 +216,42 @@ int main( int argc, char** argv )
     }
   }
 
+  // get NCS operators for heavy atom (HA) file
+  if ( ipfile_ha != "NONE" ) {
+    // atomic model
+    clipper::MMDBManager mmdb;
+    mmdb.SetFlag( MMDBF_AutoSerials | MMDBF_IgnoreDuplSeqNum );
+    mmdb.ReadPDBASCII( (char*)ipfile_ha.c_str() );
+
+    // get a list of all the atoms
+    clipper::mmdb::PPCAtom psel;
+    int hndl, nsel;
+    hndl = mmdb.NewSelection();
+    mmdb.SelectAtoms( hndl, 0, 0, SKEY_NEW );
+    mmdb.GetSelIndex( hndl, psel, nsel );
+    clipper::MMDBAtom_list atoms( psel, nsel );
+    mmdb.DeleteSelection( hndl );
+
+    // make a map
+    clipper::HKL_data<clipper::data32::F_phi> fphi( hkls );
+    clipper::HKL_data<clipper::data32::Phi_fom> phiw( hkls );
+    phiw.compute( abcd, clipper::data32::Compute_phifom_from_abcd() );
+    fphi.compute( fobs, phiw, clipper::data32::Compute_fphi_from_fsigf_phifom() );
+    clipper::Grid_sampling grid( hkls.spacegroup(), hkls.cell(), hkls.resolution(), oversampling );
+    clipper::Xmap<float> xmap( hkls.spacegroup(), hkls.cell(), grid );
+    xmap.fft_from( fphi );
+
+    // search
+    Search_NCS_from_atom_map ncsatom( 3.0, 0.1 );
+    ncsops = ncsatom( atoms, xmap );
+  }
+
   // other params
   srand( seed );
 
   // result objects
   clipper::HKL_data<clipper::data32::F_sigF> sim_f( hkls_ref );
   clipper::HKL_data<clipper::data32::ABCD> sim_hl( hkls_ref );
-  clipper::HKL_data<clipper::data32::F_phi> fphi( hkls );
   clipper::HKL_data<clipper::data32::ABCD> abcd_new( hkls );    
 
   // DO INITIAL MAP SIMULATION
@@ -209,6 +269,7 @@ int main( int argc, char** argv )
       for ( int cpar = 0; cpar < 3; cpar++ ) if ( y[cpar] < 0.0 ) {
 	skew_mean = skew_sigm = x[cpar];
 	Refine_HL_simulate phaseref( unbias, centre_radius, filter_radius,
+				     ncs_radius, ncs_volume,
 				     wt_mapllk, wt_ramp, skew_mean, skew_sigm,
 				     n_bins_mean, n_bins_sigm, 12, 1.25 );
 	phaseref( fphi, abcd_new, fsig, fobs, abcd, sim_f, ref_hl, sim_hl );
@@ -227,6 +288,7 @@ int main( int argc, char** argv )
 	skew_mean = skew_base - x[cpar];
 	skew_sigm = skew_base + x[cpar];
 	Refine_HL_simulate phaseref( unbias, centre_radius, filter_radius,
+				     ncs_radius, ncs_volume,
 				     wt_mapllk, wt_ramp, skew_mean, skew_sigm,
 				     n_bins_mean, n_bins_sigm, 12, 1.25 );
 	phaseref( fphi, abcd_new, fsig, fobs, abcd, sim_f, ref_hl, sim_hl );
@@ -246,18 +308,28 @@ int main( int argc, char** argv )
 
   // DO FIRST PHASE IMPROVEMENT CYCLE
 
+  // output NCS operators
+  for ( int i = 0; i < ncsops.size(); i++ )
+    std::cout << "\nNCS operator: " << i << "\n Rotation: " << ncsops[i].rot().polar_ccp4().format() << "\n Source:   " << ncsops[i].src().format() << "\n Target:   " << ncsops[i].tgt().format() << "\n";
+
   // do phase refinement calc
   Refine_HL_simulate phaseref( unbias, centre_radius, filter_radius,
+			       ncs_radius, ncs_volume,
 			       wt_mapllk, wt_ramp, skew_mean, skew_sigm,
 			       n_bins_mean, n_bins_sigm, 12, oversampling );
   if ( verbose >= 10 ) phaseref.debug();
-  phaseref( fphi, abcd_new, fsig, fobs, abcd, sim_f, ref_hl, sim_hl );
+  phaseref( fphi, abcd_new,
+	    fsig, fobs, abcd, sim_f, ref_hl, sim_hl, ncsops );
+  ncsops = phaseref.ncs_operators();
   // output stats
   std::cout << "\nUnbiased results from initial cycle:"
 	    << "\n R-factor     : " << phaseref.r_factor_work()
 	    << "\n Free R-factor: " << phaseref.r_factor_free()
 	    << "\n E-correl     : " << phaseref.e_correl_work()
 	    << "\n Free E-correl: " << phaseref.e_correl_free() <<"\n";
+  // output NCS operators
+  for ( int i = 0; i < ncsops.size(); i++ )
+    std::cout << "\nNCS operator: " << i << "\n Rotation: " << ncsops[i].rot().polar_ccp4().format() << "\n Source:   " << ncsops[i].src().format() << "\n Target:   " << ncsops[i].tgt().format() << "\n";
 
   if ( evaluate ) goto done;
 
@@ -272,18 +344,25 @@ int main( int argc, char** argv )
     mapsim( sim_f, sim_hl, ref_f, ref_hl, fobs, abcd );
     // do phase refinement calc
     Refine_HL_simulate phaseref( false, centre_radius, filter_radius,
+				 ncs_radius, ncs_volume,
 				 wt_mapllk, wt_ramp, skew_mean, skew_sigm,
 				 n_bins_mean, n_bins_sigm, 12, oversampling );
     if ( strictfr )
-      phaseref( fphi, abcd_new, fsig, fobs, abcd, sim_f, ref_hl, sim_hl );
+      phaseref( fphi, abcd_new,
+		fsig, fobs, abcd, sim_f, ref_hl, sim_hl, ncsops );
     else
-      phaseref( fphi, abcd_new, fobs, fobs, abcd, sim_f, ref_hl, sim_hl );
+      phaseref( fphi, abcd_new,
+		fobs, fobs, abcd, sim_f, ref_hl, sim_hl, ncsops );
+    ncsops = phaseref.ncs_operators();
     // output stats
     std::cout << "\nBiased results from cycle " << cyc+1 << ":"
 	      << "\n Biased R-factor     : " << phaseref.r_factor_work()
 	      << "\n Biased Free R-factor: " << phaseref.r_factor_free()
 	      << "\n Biased E-correl     : " << phaseref.e_correl_work()
 	      << "\n Biased Free E-correl: " << phaseref.e_correl_free() <<"\n";
+    // output NCS operators
+    for ( int i = 0; i < ncsops.size(); i++ )
+      std::cout << "\nNCS operator: " << i << "\n Rotation: " << ncsops[i].rot().polar_ccp4().format() << "\n Source:   " << ncsops[i].src().format() << "\n Target:   " << ncsops[i].tgt().format() << "\n";
   }
 
   // DONE PHASE IMPROVEMENT
@@ -295,6 +374,11 @@ int main( int argc, char** argv )
   mtzfile.export_hkl_data( abcd_new, opcol_hl );
   mtzfile.export_hkl_data( fphi    , opcol_fc );
   mtzfile.close_append();
+
+  // output new NCS operators
+  std::cout << "\n";
+  for ( int i = 0; i < ncsops.size(); i++ )
+    std::cout << "ncs-operator " << clipper::Util::rad2d(ncsops[i].rot().euler_ccp4().alpha()) << "," << clipper::Util::rad2d(ncsops[i].rot().euler_ccp4().beta()) << "," << clipper::Util::rad2d(ncsops[i].rot().euler_ccp4().gamma()) << "," << ncsops[i].src().x() << "," << ncsops[i].src().y() << "," << ncsops[i].src().z() << "," << ncsops[i].tgt().x() << "," << ncsops[i].tgt().y() << "," << ncsops[i].tgt().z() << "\n";
 
  done:
   // debug output

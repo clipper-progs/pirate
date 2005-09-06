@@ -1,11 +1,13 @@
 /*! \file piralib.h pirate library */
-/* (C) 2003 Kevin Cowtan */
-/* This code is provided as free software under the CCP4 license part (i) */
+/* Copyright 2003-2005 Kevin Cowtan & University of York all rights reserved */
 
 #include <clipper/clipper.h>
 #include <clipper/clipper-contrib.h>
 
 #include <map>
+
+#include "pirancslib.h"
+
 
 //! Reflection data type: Argand gradient
 typedef clipper::data32::F_phi ArgGrad;
@@ -50,9 +52,9 @@ private:
  */
 class Xmap_target_base {
  public:
-  // calculate value of the target function
+  //! calculate value of the target function
   virtual double func( const clipper::HKL_data<clipper::data32::F_phi>& fphi ) const = 0;
-  // calculate (diagonal) derivatives of the target w.r.t. structure factors
+  //! calculate (diagonal) derivatives of the target w.r.t. structure factors
   virtual void curv( const clipper::HKL_data<clipper::data32::F_phi>& fphi, clipper::HKL_data<ArgGrad>& grad, clipper::HKL_data<ArgCurv>& curv ) const = 0;
 
   void debug( const clipper::HKL_data<clipper::data32::F_phi>& fphi ) const;
@@ -83,13 +85,85 @@ template<int N> class MiniHist {
   void func_curv( const double& x, double& func, double& grad, double& curv ) const;
   //! return value and derivatives of log-likelihood of function
   void llk_curv( const double& x, double& func, double& grad, double& curv ) const;
+  //! return mean of function
+  double mean() const;
   //! read/write member data directly
   unsigned char& operator[] ( const int& i ) { return data[i]; }
  private:
   unsigned char data[N];
 };
 
-typedef MiniHist<16> TargetHist;
+
+//! Class for representation of a probability histogram
+/*! This class represents probability distributions for unitary
+  variables, and in particular unitary electron densities, using the
+  sun of a set of Gaussians of equal width and spacing. The
+  width of the Gaussians is determined such the the inflections of
+  neighbouring Gaussians intersect, i.e. spacing is 2 sigma. The
+  number of Gaussians is determined by the template parameter. The
+  overall scale is lost, so these are more useful for storing
+  log-likelihoods.
+*/
+template<int N> class GaussianHistogram {
+ public:
+  //! null constructor
+  GaussianHistogram() {}
+  //! constructor: initialise from data
+  GaussianHistogram( const clipper::Histogram& hist );
+  //! constructor: initialise from range and Gaussian params
+  GaussianHistogram( const clipper::Range<double>& range, const double& mean, const double& std_dev );
+  //! read member data directly
+  const double& operator[] ( const int& i ) const { return data[i]; }
+  //! combine two histograms (with same range)
+  friend GaussianHistogram<N> operator *(const GaussianHistogram<N>& g1, const GaussianHistogram<N>& g2) {
+    GaussianHistogram<N> result = g1;
+    for ( int i = 0; i < N; i++ ) result.data[i] *= g2.data[i];
+    double f = 0.0;
+    for ( int i = 0; i < N; i++ ) f = clipper::Util::max( f, result.data[i] );
+    for ( int i = 0; i < N; i++ ) result.data[i] /= f;
+    return result;
+  }
+ private:
+  double data[N];
+  clipper::Range<double> range_;
+};
+
+
+//! Class for compact representation of a probability histogram
+/*! This class represents probability distributions for unitary
+  variables, and in particular unitary electron densities, using the
+  sun of a set of Gaussians of equal width and spacing. The Gaussian
+  coefficients are represented by bytes holding the square-root of the
+  height (i.e. quadratic compression to increase dynamic range). The
+  width of the Gaussians is determined such the the inflections of
+  neighbouring Gaussians intersect, i.e. spacing is 2 sigma. The
+  number of Gaussians is determined by the template parameter. The
+  overall scale is lost, so these are more useful for storing
+  log-likelihoods.
+*/
+template<int N> class GaussianHistogramCompressed {
+ public:
+  //! null constructor
+  GaussianHistogramCompressed() {}
+  //! constructor: initialise from GaussianHistogram
+  GaussianHistogramCompressed( const GaussianHistogram<N>& ghist );
+  //! constructor: initialise from data
+  GaussianHistogramCompressed( const clipper::Histogram& hist );
+  //! return value and derivatives of function
+  void func_curv( const double& x, double& func, double& grad, double& curv ) const;
+  //! return value and derivatives of log-likelihood of function
+  void llk_curv( const double& x, double& func, double& grad, double& curv ) const;
+  //! return mean of function
+  double mean() const;
+  //! read member data directly
+  const unsigned char& operator[] ( const int& i ) const { return data[i]; }
+ private:
+  unsigned char data[N];
+};
+
+
+typedef GaussianHistogram<16> TargetHist;
+typedef GaussianHistogramCompressed<16> TargetHistCompr;
 
 
 //! Class for calculating a probability histogram based Xmap target
@@ -98,13 +172,18 @@ typedef MiniHist<16> TargetHist;
 class Xmap_target_minihist : public Xmap_target_base {
  public:
   //! initialise the target function
-  void init( const clipper::Xmap<TargetHist>& target, const clipper::Range<double>& range );
-  // calculate value of the target function
+  void init( const clipper::Xmap<TargetHistCompr>& target, const clipper::Range<double>& range );
+  //! calculate value of the target function
   double func( const clipper::HKL_data<clipper::data32::F_phi>& fphi ) const;
-  // calculate (diagonal) derivatives of the target w.r.t. structure factors
+  //! calculate (diagonal) derivatives of the target w.r.t. structure factors
   void curv( const clipper::HKL_data<clipper::data32::F_phi>& fphi, clipper::HKL_data<ArgGrad>& grad, clipper::HKL_data<ArgCurv>& curv ) const;
+
+  //! return the mean density of these distributions
+  double mean() const;
+  //! normalise the range of the histograms to match given mean density
+  void set_mean( const double& newmean );
  private:
-  const clipper::Xmap<TargetHist>* target_;
+  const clipper::Xmap<TargetHistCompr>* target_;
   clipper::Range<double> range_;
 };
 
@@ -116,9 +195,9 @@ class Xmap_target_gaussian : public Xmap_target_base {
  public:
   //! initialise the target function
   void init( const clipper::Xmap<float>& target, const clipper::Xmap<float>& weight );
-  // calculate value of the target function
+  //! calculate value of the target function
   double func( const clipper::HKL_data<clipper::data32::F_phi>& fphi ) const;
-  // calculate (diagonal) derivatives of the target w.r.t. structure factors
+  //! calculate (diagonal) derivatives of the target w.r.t. structure factors
   void curv( const clipper::HKL_data<clipper::data32::F_phi>& fphi, clipper::HKL_data<ArgGrad>& grad, clipper::HKL_data<ArgCurv>& curv ) const;
  private:
   const clipper::Xmap<float>* target_;
@@ -193,8 +272,8 @@ class Map_local_moment_ordinal {
 class Refine_HL_simulate {
  public:
   Refine_HL_simulate() {}
-  Refine_HL_simulate( bool un_bias, double rad_inner, double rad_outer, double weight_llk = 0.1, double weight_ramp = 2.0, double skew_moment1 = 0.0, double skew_moment2 = 0.0, int nbins_moment1 = 9, int nbins_moment2 = 9, int ncyc_int = 10, double oversampling = 1.5 );
-  void init( bool un_bias, double rad_inner, double rad_outer, double weight_llk = 0.1, double weight_ramp = 2.0, double skew_moment1 = 0.0, double skew_moment2 = 0.0, int nbins_moment1 = 9, int nbins_moment2 = 9, int ncyc_int = 10, double oversampling = 1.5 );
+  Refine_HL_simulate( bool un_bias, double rad_inner, double rad_outer, double ncs_radius = 6.0, double ncs_volume = 4.0, double weight_llk = 0.1, double weight_ramp = 2.0, double skew_moment1 = 0.0, double skew_moment2 = 0.0, int nbins_moment1 = 9, int nbins_moment2 = 9, int ncyc_int = 10, double oversampling = 1.5 );
+  void init( bool un_bias, double rad_inner, double rad_outer, double ncs_radius = 6.0, double ncs_volume = 4.0, double weight_llk = 0.1, double weight_ramp = 2.0, double skew_moment1 = 0.0, double skew_moment2 = 0.0, int nbins_moment1 = 9, int nbins_moment2 = 9, int ncyc_int = 10, double oversampling = 1.5 );
   bool operator() ( clipper::HKL_data<clipper::data32::F_phi>& fphi,
 		    clipper::HKL_data<clipper::data32::ABCD>& abcd_new,
 		    const clipper::HKL_data<clipper::data32::F_sigF>& fsig,
@@ -203,6 +282,15 @@ class Refine_HL_simulate {
 		    const clipper::HKL_data<clipper::data32::F_sigF>& ref_f,
 		    const clipper::HKL_data<clipper::data32::ABCD>& ref_hlcal,
 		    const clipper::HKL_data<clipper::data32::ABCD>& ref_hlsim );
+  bool operator() ( clipper::HKL_data<clipper::data32::F_phi>& fphi,
+		    clipper::HKL_data<clipper::data32::ABCD>& abcd_new,
+		    const clipper::HKL_data<clipper::data32::F_sigF>& fsig,
+		    const clipper::HKL_data<clipper::data32::F_sigF>& fobs,
+		    const clipper::HKL_data<clipper::data32::ABCD>& abcd,
+		    const clipper::HKL_data<clipper::data32::F_sigF>& ref_f,
+		    const clipper::HKL_data<clipper::data32::ABCD>& ref_hlcal,
+		    const clipper::HKL_data<clipper::data32::ABCD>& ref_hlsim,
+		    const std::vector<Local_rtop>& ncsops );
   double r_factor_work() const { return rfac_w; }  //! return stats
   double r_factor_free() const { return rfac_f; }  //! return stats
   double e_correl_work() const { return ecor_w; }  //! return stats
@@ -211,6 +299,7 @@ class Refine_HL_simulate {
   double f_correl_free() const { return fcor_f; }  //! return stats
   double llk_gain_work() const { return llkg_w; }  //! return stats
   double llk_gain_free() const { return llkg_f; }  //! return stats
+  const std::vector<Local_rtop>& ncs_operators() const { return ncsops_; }
   const clipper::Array2d<clipper::Histogram>& hist_raw() const { return hist0; }
   const clipper::Array2d<clipper::Histogram>& hist_mod() const { return hist1; }
   const double& rmsd_calc() const { return rms_cal; }  //! verbose info
@@ -220,9 +309,11 @@ class Refine_HL_simulate {
  private:
   // control parameters
   bool unbias;
-  double rad1, rad2, wtllk, wtrmp, skew1, skew2, oversam;
+  double rad1, rad2, ncsrad, ncsvol, wtllk, wtrmp, skew1, skew2, oversam;
   int ncyc, nbins1, nbins2;
+  // results
   double rfac_w, rfac_f, ecor_w, ecor_f, fcor_w, fcor_f, llkg_w, llkg_f;
+  std::vector<Local_rtop> ncsops_;
   // extra information for debugging
   bool debug_mode;
   clipper::Array2d<clipper::Histogram> hist0, hist1;
