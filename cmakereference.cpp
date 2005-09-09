@@ -1,6 +1,11 @@
 // Clipper app to prepare reference structure
 /* Copyright 2003-2004 Kevin Cowtan & University of York all rights reserved */
 
+//L   This code is distributed under the terms and conditions of the
+//L   CCP4 Program Suite Licence Agreement as a CCP4 Application.
+//L   A copy of the CCP4 licence can be obtained by writing to the
+//L   CCP4 Secretary, Daresbury Laboratory, Warrington WA4 4AD, UK.
+
 #include <clipper/clipper.h>
 #include <clipper/clipper-contrib.h>
 #include <clipper/clipper-ccp4.h>
