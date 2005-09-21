@@ -125,7 +125,7 @@ NXmap_cube::NXmap_cube( const clipper::Xmap<float>& xmap, const clipper::Coord_o
   extent_  = extent;
 
   // calc NXmap properties
-  double gby2 = round( 0.5 * extent_ / spacing_ );
+  double gby2 = rint( 0.5 * extent_ / spacing_ );
   double g = 2.0 * gby2;
   rx_ = g / extent;
   tx_ = g / 2.0;
@@ -182,10 +182,10 @@ std::pair<double,Local_rtop> Local_rtop::symm_match( const Local_rtop& other, co
       //rc2.src() = rc2.src().coord_frac(cell).lattice_copy_near(rc1.src().coord_frac(cell)).coord_orth(cell);
       //rc2.tgt() = rc2.tgt().coord_frac(cell).lattice_copy_near(rc1.tgt().coord_frac(cell)).coord_orth(cell);
       cf = ( rc2.src() - rc1.src() ).coord_frac(cell);
-      cf = clipper::Coord_frac(round(cf.u()),round(cf.v()),round(cf.w()));
+      cf = clipper::Coord_frac(rint(cf.u()),rint(cf.v()),rint(cf.w()));
       rc2.src() = rc2.src() - cf.coord_orth(cell);
       cf = ( rc2.tgt() - rc1.tgt() ).coord_frac(cell);
-      cf = clipper::Coord_frac(round(cf.u()),round(cf.v()),round(cf.w()));
+      cf = clipper::Coord_frac(rint(cf.u()),rint(cf.v()),rint(cf.w()));
       rc2.tgt() = rc2.tgt() - cf.coord_orth(cell);
       clipper::Rotation rot = rc1.rot().inverse() * rc2.rot();
       double a = 2.0*acos(rot.w());
@@ -221,14 +221,14 @@ std::pair<int,double> Local_rtop::atom_match( const clipper::Spacegroup& spgr, c
       a1 = symop_orth[sym1] * coords[atm1];
       //a1 = a1.coord_frac(cell).lattice_copy_near(src().coord_frac(cell)).coord_orth(cell);
       cf = (a1-src()).coord_frac(cell);
-      cf = clipper::Coord_frac(round(cf.u()),round(cf.v()),round(cf.w()));
+      cf = clipper::Coord_frac(rint(cf.u()),rint(cf.v()),rint(cf.w()));
       a1 = a1 - cf.coord_orth(cell);
       for ( int atm2 = 0; atm2 < coords.size(); atm2++ )
 	for ( int sym2 = 0; sym2 < spgr.num_symops(); sym2++ ) {
 	  a2 = symop_orth[sym2] * coords[atm2];
 	  //a2 = a2.coord_frac(cell).lattice_copy_near(tgt().coord_frac(cell)).coord_orth(cell);
 	  cf = (a2-tgt()).coord_frac(cell);
-	  cf = clipper::Coord_frac(round(cf.u()),round(cf.v()),round(cf.w()));
+	  cf = clipper::Coord_frac(rint(cf.u()),rint(cf.v()),rint(cf.w()));
 	  a2 = a2 - cf.coord_orth(cell);
 	  double r2 = (rtop*a1 - a2).lengthsq();
 	  if ( r2 < r2min ) r2min = r2;
@@ -262,7 +262,7 @@ std::pair<int,int> Local_rtop::atom_loop( const clipper::Spacegroup& spgr, const
 	trial = symop_orth[sym] * coords[atm];
 	//trial = trial.coord_frac(cell).lattice_copy_near(next.coord_frac(cell).coord_orth(cell);
 	clipper::Coord_frac cf = (trial-next).coord_frac(cell);
-	cf = clipper::Coord_frac(round(cf.u()),round(cf.v()),round(cf.w()));
+	cf = clipper::Coord_frac(rint(cf.u()),rint(cf.v()),rint(cf.w()));
 	trial = trial - cf.coord_orth(cell);
 	if ( (next-trial).lengthsq() < (next-best).lengthsq() )
 	  best = trial;
@@ -957,11 +957,11 @@ std::vector<Local_rtop> Search_NCS_from_atom_map::operator() ( const clipper::At
 	  co2 = co - coords[c2];
 	  //cf  = co1.coord_frac(cell).lattice_copy_zero();
 	  cf=co1.coord_frac(cell);
-	  cf=cf-clipper::Coord_frac(round(cf.u()),round(cf.v()),round(cf.w()));
+	  cf=cf-clipper::Coord_frac(rint(cf.u()),rint(cf.v()),rint(cf.w()));
 	  src.push_back( Gaussian_orth( cf.coord_orth(cell), 3.0, 1.0 ) );
 	  //cf  = co2.coord_frac(cell).lattice_copy_zero();
 	  cf=co2.coord_frac(cell);
-	  cf=cf-clipper::Coord_frac(round(cf.u()),round(cf.v()),round(cf.w()));
+	  cf=cf-clipper::Coord_frac(rint(cf.u()),rint(cf.v()),rint(cf.w()));
 	  tgt.push_back( Gaussian_orth( cf.coord_orth(cell), 3.0, 1.0 ) );
 	}
       // sort by distance from centre
