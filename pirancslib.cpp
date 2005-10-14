@@ -327,7 +327,7 @@ Local_rtop Local_rtop::proper( const clipper::Spacegroup& spgr, const clipper::C
     resultsym[k].first = wloop*loopshift+wscrw*scrwshift+wtran*transhift;
   }
   // and pick the best
-  sort( resultsym.begin(), resultsym.end() );
+  std::sort( resultsym.begin(), resultsym.end() );
   return resultsym[0].second;
 }
 
@@ -969,8 +969,8 @@ std::vector<Local_rtop> Search_NCS_from_atom_map::operator() ( const clipper::At
 	src_index.push_back( std::pair<double,int>( src[i].coord_orth().lengthsq(), i ) );
 	tgt_index.push_back( std::pair<double,int>( tgt[i].coord_orth().lengthsq(), i ) );
       }
-      sort( src_index.begin(), src_index.end() );
-      sort( tgt_index.begin(), tgt_index.end() );
+      std::sort( src_index.begin(), src_index.end() );
+      std::sort( tgt_index.begin(), tgt_index.end() );
       // truncate list
       int ncut = clipper::Util::min( int(src.size()), 25 );
       for ( int i = 0; i < ncut; i++ ) {
