@@ -24,7 +24,7 @@ int main( int argc, char** argv )
   std::cout << " Cowtan K. (2000) Acta Cryst. D56, 1612-1621.\n";
 
   int tm = time( NULL );
-  if ( tm > 1136073600 ) clipper::Message::message( clipper::Message_warn( "This program has expired: download a new version" ) );
+  //if ( tm > 1136073600 ) clipper::Message::message( clipper::Message_warn( "This program has expired: download a new version" ) );
 
   // defaults
   clipper::String ipfile_ref = "csimulate.mtz";
