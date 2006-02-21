@@ -1083,9 +1083,9 @@ std::vector<Local_rtop> Search_NCS_from_atom_map::exclude_inverse( const std::ve
     Local_rtop rtinv = ncsops[i].inverse();
     int j;
     for ( j = 0; j < ncsopsi.size(); j++ )
-      if ( rtinv.symm_match( ncsops[j], spgr, cell, tol_dst_, tol_ang_ ).first
+      if ( rtinv.symm_match( ncsopsi[j], spgr, cell, tol_dst_, tol_ang_ ).first
 	   < 2.0 ) break;
-    if ( j == ncsopsi.size() ) ncsopsi.push_back( ncsops[j] );
+    if ( j == ncsopsi.size() ) ncsopsi.push_back( ncsops[i] );
   }
   return ncsopsi;
 }
