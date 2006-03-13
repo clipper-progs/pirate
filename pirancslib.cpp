@@ -188,7 +188,7 @@ std::pair<double,Local_rtop> Local_rtop::symm_match( const Local_rtop& other, co
       cf = clipper::Coord_frac(rint(cf.u()),rint(cf.v()),rint(cf.w()));
       rc2.tgt() = rc2.tgt() - cf.coord_orth(cell);
       clipper::Rotation rot = rc1.rot().inverse() * rc2.rot();
-      double a = 2.0*acos(rot.w());
+      double a = acos(2.0*rot.w()*rot.w()-1.0);
       double r = sqrt( ( rc2.rtop_orth()*rc1.src() - rc1.tgt() ).lengthsq() );
       double a2 = (a*a)/(tol_ang*tol_ang);
       double r2 = (r*r)/(tol_dst*tol_dst);
@@ -501,8 +501,10 @@ std::vector<std::pair<double,clipper::Rotation> > Search_nxmap_rotation::operato
     for ( int i = 1; i < rescut.size(); i++ ) {
       int j;
       double diff;
+      clipper::Rotation rot;
       for ( j = 0; j < i; j++ ) {
-	diff = 2.0 * acos( (rescut[j].second.inverse()*rescut[i].second).w() );
+	rot = rescut[j].second.inverse()*rescut[i].second;
+	diff = acos(2.0*rot.w()*rot.w()-1.0);
 	if ( diff < 3.0 * step ) break;
       }
       if ( j == result.size() ) result.push_back( rescut[i] );
