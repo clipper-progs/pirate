@@ -9,15 +9,14 @@
 #include <clipper/clipper-ccp4.h>
 #include <clipper/clipper-mmdb.h>
 #include <clipper/clipper-contrib.h>
-#include <ccp4_program.h>
+#include <clipper/clipper-ccp4.h>
 #include "piralib.h"
-#include "ccp4-extras.h"
 #include <time.h>
 
 
 int main( int argc, char** argv )
 {
-  CCP4program prog( "cpirate", "0.3.0", "$Date: 2005/08/05" );
+  CCP4Program prog( "cpirate", "0.3.0", "$Date: 2005/08/05" );
 
   std::cout << "\nCopyright 2003-2005 Kevin Cowtan and University of York\n";
   std::cout << "All rights reserved. Please reference:\n";
@@ -67,7 +66,7 @@ int main( int argc, char** argv )
   const int bin_min = 1000;
 
   // command input
-  CommandInput args( argc, argv, true );
+  CCP4CommandInput args( argc, argv, true );
   int arg = 0;
   while ( ++arg < args.size() ) {
     if ( args[arg] == "-mtzin-ref" ) {

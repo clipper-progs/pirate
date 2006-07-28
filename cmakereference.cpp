@@ -1,17 +1,11 @@
 // Clipper app to prepare reference structure
 /* Copyright 2003-2004 Kevin Cowtan & University of York all rights reserved */
 
-//L   This code is distributed under the terms and conditions of the
-//L   CCP4 Program Suite Licence Agreement as a CCP4 Application.
-//L   A copy of the CCP4 licence can be obtained by writing to the
-//L   CCP4 Secretary, Daresbury Laboratory, Warrington WA4 4AD, UK.
-
 #include <clipper/clipper.h>
 #include <clipper/clipper-contrib.h>
 #include <clipper/clipper-ccp4.h>
 #include <clipper/clipper-mmdb.h>
 #include <clipper/clipper-cif.h>
-#include "ccp4-extras.h"
 
 extern "C" {
 #if defined _MSC_VER
@@ -28,7 +22,7 @@ extern void decompress(int,int);  // decompress lib
 
 int main( int argc, char** argv )
 {
-  CCP4program prog( "cmakereference", "0.1", "$Date: 2004/09/01" );
+  CCP4Program prog( "cmakereference", "0.2", "$Date: 2005/04/15" );
 
   std::cout << "\n  This program includes a modified version of ftplib\n  by Thomas Pfau (see http://nbpfaus.net/~pfau/ftplib/),\n  and a portion of the public domain 'ncompress' code.\n  It is distributed under CCP4 part 0 or LGPL.\n\n";
 
@@ -36,6 +30,7 @@ int main( int argc, char** argv )
   clipper::String pdbid = "NONE";
   clipper::String pdbfilez = "NONE";
   clipper::String rflfilez = "NONE";
+  clipper::String ipcolf = "NONE";
   clipper::String mtzout = "NONE";
   clipper::String pdbout = "NONE";
   clipper::Resolution reso;
@@ -45,7 +40,7 @@ int main( int argc, char** argv )
   int verbose = 0;
 
   // command input
-  CommandInput args( argc, argv, true );
+  CCP4CommandInput args( argc, argv, true );
   int arg = 0;
   while ( ++arg < args.size() ) {
     if ( args[arg] == "-pdbid" ) {
@@ -58,6 +53,8 @@ int main( int argc, char** argv )
       if ( ++arg < args.size() ) mtzout = args[arg];
     } else if ( args[arg] == "-pdbout" ) {
       if ( ++arg < args.size() ) pdbout = args[arg];
+    } else if ( args[arg] == "-colin-fo" ) {
+      if ( ++arg < args.size() ) ipcolf = args[arg];
     } else if ( args[arg] == "-resolution" ) {
       if ( ++arg < args.size() ) reso = clipper::Resolution( clipper::String(args[arg]).f() );
     } else if ( args[arg] == "-num-reflns" ) {
@@ -74,7 +71,7 @@ int main( int argc, char** argv )
     }
   }
   if ( args.size() <= 1 ) {
-    std::cout << "Usage: cmakereference\n\t-pdbid <accession-code>\n\t-pdbin <.ent.Z-file>\n\t-cifin <.ent.Z-file>\n\t-resolution <reso>\n\tGenerate reference structure for pirate.\nIf no .ent.Z files are given, they are fetched by ftp if possible.\n";
+    std::cout << "Usage: cmakereference\n\t-pdbid <accession-code>\t\tCOMPULSORY\n\t-pdbin <.ent.Z-file>\n\t-cifin <.ent.Z-file>\n\t-mtzout <filename>\n\t-pdbout <filename>\n\t-resolution <reso>\nGenerate reference structure for pirate/buccaneer.\nIf no .ent.Z files are given, they are fetched by ftp if possible.\n";
     exit(1);
   }
 
@@ -147,26 +144,31 @@ int main( int argc, char** argv )
 
   // now uncompress the files
   int fdip, fdop;
+  clipper::String pdbfile( pdbfilez ), rflfile( rflfilez );
 
-  std::cout << "Decompressing coordinates...\n\n";
-  clipper::String pdbfile = pdbfilez.substr( 0, pdbfilez.length() - 2 );
-  fdip = open( pdbfilez.c_str(), O_RDONLY );
-  if ( fdip < 0 ) clipper::Message::message( nordc );
-  fdop = open( pdbfile.c_str(), O_CREAT|O_WRONLY|O_TRUNC, S_IREAD|S_IWRITE );
-  if ( fdop < 0 ) clipper::Message::message( nowrc );
-  decompress( fdip, fdop );
-  close( fdip );
-  close( fdop );
+  if ( pdbfilez.substr( pdbfilez.length() - 2 ) == ".Z" ) {
+    std::cout << "Decompressing coordinates...\n\n";
+    pdbfile = pdbfilez.substr( 0, pdbfilez.length() - 2 );
+    fdip = open( pdbfilez.c_str(), O_RDONLY );
+    if ( fdip < 0 ) clipper::Message::message( nordc );
+    fdop = open( pdbfile.c_str(), O_CREAT|O_WRONLY|O_TRUNC, S_IREAD|S_IWRITE );
+    if ( fdop < 0 ) clipper::Message::message( nowrc );
+    decompress( fdip, fdop );
+    close( fdip );
+    close( fdop );
+  }
 
-  std::cout << "Decompressing reflections...\n\n";
-  clipper::String rflfile = rflfilez.substr( 0, rflfilez.length() - 2 );
-  fdip = open( rflfilez.c_str(), O_RDONLY );
-  if ( fdip < 0 ) clipper::Message::message( nordc );
-  fdop = open( rflfile.c_str(), O_CREAT|O_WRONLY|O_TRUNC, S_IREAD|S_IWRITE );
-  if ( fdop < 0 ) clipper::Message::message( nowrc );
-  decompress( fdip, fdop );
-  close( fdip );
-  close( fdop );
+  if ( rflfilez.substr( rflfilez.length() - 2 ) == ".Z" ) {
+    std::cout << "Decompressing reflections...\n\n";
+    rflfile = rflfilez.substr( 0, rflfilez.length() - 2 );
+    fdip = open( rflfilez.c_str(), O_RDONLY );
+    if ( fdip < 0 ) clipper::Message::message( nordc );
+    fdop = open( rflfile.c_str(), O_CREAT|O_WRONLY|O_TRUNC, S_IREAD|S_IWRITE );
+    if ( fdop < 0 ) clipper::Message::message( nowrc );
+    decompress( fdip, fdop );
+    close( fdip );
+    close( fdop );
+  }
 
   // make data objects
   clipper::CIFfile cifin;
@@ -181,15 +183,24 @@ int main( int argc, char** argv )
   mmdb.ReadPDBASCII( (char*)pdbfile.c_str() );
 
   // read reflection info
-  cifin.open_read( rflfile );
-  clipper::Spacegroup   spgr = mmdb.spacegroup();
-  clipper::Cell         cell = mmdb.cell();
-  if ( reso.is_null() ) reso = cifin.resolution( cell );
-  clipper::HKL_info hkls( spgr, cell, reso, true );
+  clipper::Spacegroup spgr = mmdb.spacegroup();
+  clipper::Cell       cell = mmdb.cell();
+  clipper::HKL_info hkls;
+  clipper::HKL_data<clipper::data32::F_sigF> fo(hkls);
+  if ( rflfile.substr( rflfile.length() - 4 ) == ".ent" ) {  // cif format
+    cifin.open_read( rflfile );
+    if ( reso.is_null() ) reso = cifin.resolution( cell );
+    hkls.init( spgr, cell, reso, true );
+    cifin.import_hkl_data( fo );
+    cifin.close_read();
+  } else {                                                     // mtz format
+    mtzfile.open_read( rflfile );
+    if ( reso.is_null() ) reso = mtzfile.resolution();
+    hkls.init( spgr, cell, reso, true );
+    mtzfile.import_hkl_data( fo, ipcolf );
+    mtzfile.close_read();
+  }
   std::cout << "Number of reflections: " << hkls.num_reflections() << "\n";
-  clipper::HKL_data<clipper::data32::F_sigF> fo( hkls );
-  cifin.import_hkl_data( fo );
-  cifin.close_read();
 
   // get a list of all the atoms
   clipper::mmdb::PPCAtom psel;
@@ -225,7 +236,7 @@ int main( int argc, char** argv )
 
   // do sigmaa calc
   clipper::SFweight_spline<float> sfw( n_refln, n_param );
-  bool fl = sfw( fb, fd, phiw, fo, fc, flag );
+  sfw( fb, fd, phiw, fo, fc, flag );
 
   // calc abcd
   clipper::HKL_data<clipper::data32::ABCD> abcd( hkls );
