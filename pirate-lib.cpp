@@ -1,109 +1,76 @@
-/*! \file piralib.cpp pirate library */
+/*! \file pirate-lib.cpp pirate library */
 /* Copyright 2003-2005 Kevin Cowtan & University of York all rights reserved */
 
-//L   This code is distributed under the terms and conditions of the
-//L   CCP4 Program Suite Licence Agreement as a CCP4 Application.
-//L   A copy of the CCP4 licence can be obtained by writing to the
-//L   CCP4 Secretary, Daresbury Laboratory, Warrington WA4 4AD, UK.
-
-#include "piralib.h"
+#include "pirate-lib.h"
 
 #include <clipper/clipper-ccp4.h>
 
 
-// Minihist
+// Histogram smoother
 
-template<int N> MiniHist<N>::MiniHist( const clipper::Histogram& hist )
+class HistogramSmoother {
+ public:
+  static clipper::Histogram smooth_region( const clipper::Histogram src, int i1, int i2 );
+  static clipper::Histogram smooth_curvature( clipper::Histogram src ); 
+};
+
+clipper::Histogram HistogramSmoother::smooth_region( const clipper::Histogram src, int i1, int i2 )
 {
-  // fit params
-  std::vector<double> params( N, 1.0 );
-  std::vector<double> grad( N ), step( N ), w( N );
-  clipper::Matrix<double> curv( N, N );
-  double x0, x1, x2, f, val;
-  const double d = 0.5;  // edge offset
-  const double s = double(params.size()) + 2.0*d;  // histogram scale
-  for ( int i = 0; i < 3; i++ ) {
-    // calculate function, gradients and curvatures
-    val = 0.0;  // zero everything
-    for ( int i = 0; i < params.size(); i++ ) grad[i] = 0.0;
-    for ( int i = 0; i < params.size(); i++ )
-      for ( int j = 0; j < params.size(); j++ ) curv(i,j) = 0.0;
-    for ( int i = 0; i < hist.size(); i++ ) {
-      x0 = s * ( hist.x(i) - hist.min()) / hist.range();
-      for ( int j = 0; j < params.size(); j++ ) {
-	x1 = double(j) + 0.5 + d;
-	w[j] = exp( -2.0 * clipper::Util::sqr( x0-x1 ) );
+  if ( i1 < 0 )            i1 = 0;
+  if ( i2 > src.size()-1 ) i2 = src.size()-1;
+  clipper::Histogram tgt( src, src.size() );
+  for ( int i = 0; i < i1; i++ )
+    tgt.accumulate( src.x(i), src.y(i) );
+  tgt.accumulate( src.x(i1), 0.75*src.y(i1)+0.25*src.y(i1+1) );
+  for ( int i = i1+1; i <= i2-1; i++ )
+    tgt.accumulate( src.x(i), 0.25*src.y(i-1)+0.5*src.y(i)+0.25*src.y(i+1) );
+  tgt.accumulate( src.x(i2), 0.25*src.y(i2-1)+0.75*src.y(i2) );
+  for ( int i = i2+1; i < src.size(); i++ )
+    tgt.accumulate( src.x(i), src.y(i) );
+  return tgt;
+}
+
+clipper::Histogram HistogramSmoother::smooth_curvature( clipper::Histogram src )
+{
+  // initial smoothing
+  clipper::Histogram tgt = smooth_region( src, 0, src.size()-1 );
+
+  // specfic smoothing of negative curvature regions
+  for ( int c = 0; c < 100; c++ ) {
+    /*
+    // locate maximum to preserve from smoothing
+    int imax = 0;
+    for ( int i = 0; i < tgt.size(); i++ )
+      if ( tgt.y(i) > tgt.y(imax) ) imax = i;
+    // calc curvatures
+    std::vector<double> crv( tgt.size(), 0.0 );
+    for ( int i = 1; i < crv.size()-1; i++ )
+      crv[i] = tgt.y(i-1) - 2.0*tgt.y(i) + tgt.y(i+1);
+    // tabulate curvature regions
+    std::vector<std::pair<int,int> > regions;
+    int i1, i2;
+    for ( i1 = 1; i1 < crv.size(); i1++ )
+      if ( crv[i1-1] >= 0.0 && crv[i1] < 0.0 ) {
+	for ( i2 = i1; i2 < crv.size()-1; i2++ )
+	  if ( crv[i2+1] >= 0.0 ) break;
+	if ( i1 > imax || i2 < imax )
+	  regions.push_back( std::pair<int,int>( i1, i2 ) );
       }
-      f = 0.0;
-      for ( int j = 0; j < params.size(); j++ ) f += params[j] * w[j];
-      val += clipper::Util::sqr( f - hist.y(i) );
-      for ( int j = 0; j < params.size(); j++ ) {
-	grad[j] += 2.0 * ( f - hist.y(i) ) * w[j];
-	for ( int k = 0; k < params.size(); k++ )
-	  curv(j,k) += 2.0 * w[j] * w[k];
-      }
-    }
-    // solve for Newton Raphson step and apply
-    step = curv.solve( grad );
-    for ( int j = 0; j < step.size(); j++ )
-      params[j] = clipper::Util::max( params[j]-step[j], 0.0 );
+    // now smooth them
+    if ( regions.size() > 0 )
+      tgt = smooth_region( tgt, regions[0].first-1, regions[regions.size()-1].second+1 );
+    for ( int r = 0; r < regions.size(); r++ )
+      tgt = smooth_region( tgt, regions[r].first-1, regions[r].second+1 );
+    */
+    int nmax = 0;
+    for ( int i = 1; i < tgt.size()-1; i++ )
+      if ( tgt.y(i) > tgt.y(i-1) && tgt.y(i) > tgt.y(i+1) ) nmax++;
+    if ( nmax > 1 ) tgt = smooth_region( tgt, 0, tgt.size()-1 );
   }
 
-  // compress and store
-  f = 0.0;
-  for ( int i = 0; i < N; i++ )
-    f = clipper::Util::max( f, params[i] );
-  for ( int i = 0; i < N; i++ )
-    data[i] = clipper::Util::intr( 255 * sqrt( params[i]/f ) );
+  // done
+  return tgt;
 }
-
-template<int N> void MiniHist<N>::func_curv( const double& x, double& func, double& grad, double& curv ) const
-{
-  const double s(N+1);
-  const double b(4.0*s*s);
-  double f, dx;
-  func = grad = curv = 0.0;
-  for ( int i = 0; i < N; i++ ) {
-    dx = x - double(i+1)/s;
-    if ( fabs( dx * s ) < 8.0 ) {  // optimisation
-      f = double( data[i] );
-      f = f * f * exp( -0.5 * b * dx * dx );
-      func += f;
-      grad += -b * dx * f;
-      curv += b * ( b * dx * dx - 1.0 ) * f;
-    }
-  }
-}
-
-template<int N> void MiniHist<N>::llk_curv( const double& x, double& func, double& grad, double& curv ) const
-{
-  const double sml = 1.0e-50;
-  func_curv( x, func, grad, curv );
-  func = clipper::Util::max( func, sml );
-  grad = grad / func;
-  curv = curv / func - grad * grad;
-  func = log( func );
-}
-
-template<int N> double MiniHist<N>::mean() const
-{
-  const double s(N+1);
-  double s0, s1, f, dx;
-  s0 = s1 = 0.0;
-  for ( int i = 0; i < N; i++ ) {
-    dx = double(i+1)/s;
-    f = double( data[i] );
-    f = f * f;
-    s0 += f;
-    s1 += dx * f;
-  }
-  return s1 / s0;
-}
-
-template class MiniHist<16>;
-template class MiniHist<24>;
-template class MiniHist<32>;
-template class MiniHist<48>;
 
 
 // GaussianHistogram
@@ -127,7 +94,7 @@ template<int N> GaussianHistogram<N>::GaussianHistogram( const clipper::Histogra
       x0 = s * ( hist.x(i) - hist.min()) / hist.range();
       for ( int j = 0; j < params.size(); j++ ) {
 	x1 = double(j) + 0.5 + d;
-	w[j] = exp( -2.0 * clipper::Util::sqr( x0-x1 ) );
+	w[j] = exp( -2.0 * clipper::Util::sqr( ((1.0))* (x0-x1) ) );
       }
       f = 0.0;
       for ( int j = 0; j < params.size(); j++ ) f += params[j] * w[j];
@@ -153,6 +120,63 @@ template<int N> GaussianHistogram<N>::GaussianHistogram( const clipper::Histogra
   range_ = hist;
 }
 
+
+template<int N> GaussianHistogram<N>::GaussianHistogram( const clipper::Range<double>& range, const clipper::Histogram& hist )
+{
+  // fit params
+  std::vector<double> params( N, 1.0 );
+  std::vector<double> grad( N ), step( N ), w( N );
+  clipper::Matrix<double> curv( N, N );
+  double x0, x1, x2, f, val;
+  const double d = 0.5;  // edge offset
+  const double s = double(params.size()) + 2.0*d;  // histogram scale
+  int i0 = int( hist.size() * (range.min()-hist.min())/hist.range() ) - 1;
+  int i1 = int( hist.size() * (range.max()-hist.min())/hist.range() ) + 1;
+  //std::cout << i0 << " " << i1 << "  i0i1\n";
+  for ( int c = 0; c < 3; c++ ) {
+    // calculate function, gradients and curvatures
+    val = 0.0;  // zero everything
+    for ( int i = 0; i < params.size(); i++ ) grad[i] = 0.0;
+    for ( int i = 0; i < params.size(); i++ )
+      for ( int j = 0; j < params.size(); j++ ) curv(i,j) = 0.0;
+    for ( int i = i0; i < i1; i++ ) {
+      // fit points over a region wider than the histogram
+      double y = 0.0;
+      if ( i >= 0 && i < hist.size() ) y = hist.y(i);
+      // calc weights
+      x0 = s * ( hist.x(i) - range.min() ) / range.range();
+      for ( int j = 0; j < params.size(); j++ ) {
+	x1 = double(j) + 0.5 + d;
+	w[j] = exp( -2.0 * clipper::Util::sqr( ((1.0))* (x0-x1) ) );
+      }
+      f = 0.0;
+      for ( int j = 0; j < params.size(); j++ ) f += params[j] * w[j];
+      // calc func/grad/curv
+      val += clipper::Util::sqr( f - y );
+      for ( int j = 0; j < params.size(); j++ ) {
+	grad[j] += 2.0 * ( f - y ) * w[j];
+	for ( int k = 0; k < params.size(); k++ )
+	  curv(j,k) += 2.0 * w[j] * w[k];
+      }
+    }
+    // solve for Newton Raphson step and apply
+    step = curv.solve( grad );
+    for ( int j = 0; j < step.size(); j++ )
+      params[j] = clipper::Util::max( params[j]-step[j], 0.0 );
+  }
+
+  // store
+  f = 0.0;
+  for ( int i = 0; i < N; i++ ) f = clipper::Util::max( f, params[i] );
+  for ( int i = 0; i < N; i++ ) data[i] = params[i]/f;
+
+  //std::cout << "GH: "; for ( int i = 0; i < N; i++ ) std::cout << clipper::String(int(99.9*data[i]),2) << " "; std::cout << "\n";
+
+  // store range
+  range_ = range;
+}
+
+
 template<int N> GaussianHistogram<N>::GaussianHistogram( const clipper::Range<double>& range, const double& mean, const double& std_dev )
 {
   // calculate Gaussian
@@ -166,6 +190,7 @@ template<int N> GaussianHistogram<N>::GaussianHistogram( const clipper::Range<do
   for ( int i = 0; i < N; i++ ) f = clipper::Util::max( f, data[i] );
   for ( int i = 0; i < N; i++ ) data[i] /= f;
 
+  if (clipper::Util::isnan(data[0])) { std::cout << "GH " << range.min() << " " << range.max() << " " << mean << " " << std_dev << " " << f << std::endl; for ( int i = 0; i < N; i++ ) std::cout << i << " " << data[i] << "\n"; }
   // store range
   range_ = range;
 }
@@ -201,7 +226,7 @@ template<int N> void GaussianHistogramCompressed<N>::func_curv( const double& x,
   double f, dx;
   func = grad = curv = 0.0;
   for ( int i = 0; i < N; i++ ) {
-    dx = x - double(i+1)/s;
+    dx = ((1.0))* ( x - double(i+1)/s );
     if ( fabs( dx * s ) < 8.0 ) {  // optimisation
       f = double( data[i] );
       f = f * f * exp( -0.5 * b * dx * dx );
@@ -590,7 +615,7 @@ clipper::LogPhaseProb<72> llk_dist( const clipper::data32::F_phi& fphi, const Ar
   float dww = -1.0/f2;
   daa += dww;
   dbb += dww;
-  // get normalisation factor
+  // get normalisation factor to set integral to 1
   float s;
   if ( !cls.centric() ) {
     s = log( clipper::Util::twopi()/sqrt(daa*dbb-dab*dab) );
@@ -599,12 +624,19 @@ clipper::LogPhaseProb<72> llk_dist( const clipper::data32::F_phi& fphi, const Ar
     b = sin( cls.allowed() );
     s = log( clipper::Util::twopi()/fabs(a*a*daa+b*b*dbb+2.0*a*b*dab) );
   }
+  // calculate offset to scale factor for non-origin centring of Gaussian
+  float a0 = -(dbb*da-dab*db) / (daa*dbb-dab*dab);
+  float b0 = -(daa*db-dab*da) / (daa*dbb-dab*dab);
+  float c0 = a0*da + b0*db + 0.5*a0*a0*daa + a0*b0*dab + 0.5*b0*b0*dbb;
   // calculate phase probability distribution
   clipper::LogPhaseProb<72> q( cls );
   for ( int p = 0; p < q.size(); p ++ ) {
     a = f * cos( q.phase(p) );
     b = f * sin( q.phase(p) );
-    q[p] = (a*da + b*db + 0.5*a*a*daa + a*b*dab + 0.5*b*b*dbb) - s;
+    q[p] = (a*da + b*db + 0.5*a*a*daa + a*b*dab + 0.5*b*b*dbb - c0) - s;
+    //float a1 = a - a0; float b1 = b - b0;
+    //float x = (a1*da + b1*db + 0.5*a1*a1*daa + a1*b1*dab + 0.5*b1*b1*dbb) - s;
+    //if ( fabs(q[p]-x) > 0.1 ) std::cout << "ERR " << q[p] << " " << x << "\n";
   }
   return q;
 }
@@ -685,7 +717,10 @@ bool Refine_HL_coeff::operator()
   // now do a statistics run
   clipper::HKL_data<clipper::data32::E_sigE>
     eo( fobs.base_hkl_info() ), ec( fobs.base_hkl_info() );
-  double nw, nf, lw, lf, rw, rf, dw, df, l1, l2;
+  ArgGrad gradnull; ArgCurv curvnull;
+  gradnull.f() = gradnull.phi() = 0.0;
+  curvnull.curv_aa() = curvnull.curv_bb() = curvnull.curv_ab() = 0.0;
+  double nw, nf, lw, lf, rw, rf, dw, df, s1, s2;
   double fo1, fc1, eo1, ec1;
   double eow, eof, ecw, ecf, eoow, eoof, eccw, eccf, eocw, eocf; 
   double fow, fof, fcw, fcf, foow, foof, fccw, fccf, focw, focf; 
@@ -709,25 +744,39 @@ bool Refine_HL_coeff::operator()
   // now do stats
   for ( ih = fphi.first(); !ih.last(); ih.next() )
     if ( ih.hkl() != clipper::HKL::zero() && !fobs[ih].missing() ) {
-      clipper::LogPhaseProb<72> qmap( ih.hkl_class() );
-      f2 = ih.hkl_class().epsilonc() * meanf2.f(ih);
       // calculate most probable F
+      f2 = ih.hkl_class().epsilonc() * meanf2.f(ih);
       fm = llk_max( fphi[ih], grad[ih], curv[ih], f2, llkscale_ );
       fo1 = eo[ih].E();
       fc1 = ec[ih].E();
       eo1 = fo1 * sqrt( clipper::Util::max( scalefosq.f(ih), 0.0 ) );
       ec1 = fc1 * sqrt( clipper::Util::max( scalefcsq.f(ih), 0.0 ) );
-      // calc R, R-free, LLK, LLK-free
+      // calculate phase probability distributions
+      clipper::LogPhaseProb<72> qexp(ih.hkl_class()),
+	  qnul(ih.hkl_class()), qmap(ih.hkl_class());
+      qexp.set_abcd( abcd[ih] );
+      qnul = llk_dist( gradnull, gradnull, curvnull, f2, llkscale_,
+		       ih.hkl_class(), fobs[ih].f() );
       qmap = llk_dist( fphi[ih], grad[ih], curv[ih], f2, llkscale_,
 		       ih.hkl_class(), fobs[ih].f() );
+      // calc llg
+      s1 = s2 = 0.0;  // sum exp, map, posterior probs
+      for ( int p = 0; p < qmap.size(); p ++ ) {
+	s1 += exp( qexp[p] + qnul[p] );
+	s2 += exp( qexp[p] + qmap[p] );
+      }
+      double llg = log( s2 / s1 );
+      // calc R, R-free, LLK, LLK-free
+      /*
       f = fobs[ih].f()+0.05*sqrt(f2);
       l1 = 0.0;
       for ( int p = 0; p < qmap.size(); p ++ )
 	l1 += clipper::Util::twopi()/double(qmap.size()) * f * exp( qmap[p] );
       l2 = f * exp( - fobs[ih].f()*fobs[ih].f()/f2 ) / f2;
+      */
       if ( !fsig[ih].missing() ) {
 	nw += 1.0;
-	lw += log( l1/l2 );
+	lw += llg;
 	rw += fabs( fm - fobs[ih].f() );
 	dw += fobs[ih].f();
 	eow += eo1;
@@ -742,7 +791,7 @@ bool Refine_HL_coeff::operator()
 	focw += fo1 * fc1;
       } else {
 	nf += 1.0;
-	lf += log( l1/l2 );
+	lf += llg;
 	rf += fabs( fm - fobs[ih].f() );
 	df += fobs[ih].f();
 	eof += eo1;
@@ -759,7 +808,6 @@ bool Refine_HL_coeff::operator()
     }
 
   // store free results
-  std::map<std::string,double> result;
   rfac_w = rw/dw;
   rfac_f = (nf>0.0)?(rf/df):0.0;
   ecor_w = (eocw*nw-eow*ecw) / sqrt((eoow*nw-eow*eow)*(eccw*nw-ecw*ecw));
@@ -938,178 +986,6 @@ void Refine_HL_simulate::init( bool un_bias, double rad_inner, double rad_outer,
   debug_mode = false;
 }
 
-bool Refine_HL_simulate::operator() (
-  clipper::HKL_data<clipper::data32::F_phi>& fphi,
-  clipper::HKL_data<clipper::data32::ABCD>& abcd_new,
-  const clipper::HKL_data<clipper::data32::F_sigF>& fsig,
-  const clipper::HKL_data<clipper::data32::F_sigF>& fobs,
-  const clipper::HKL_data<clipper::data32::ABCD>& abcd,
-  const clipper::HKL_data<clipper::data32::F_sigF>& ref_f,
-  const clipper::HKL_data<clipper::data32::ABCD>& ref_hlcal,
-  const clipper::HKL_data<clipper::data32::ABCD>& ref_hlsim )
-{
-  // shared data used in both sections:
-  clipper::Range<double> hist_range;
-  clipper::Array2d<TargetHist> hist_bins( nbins1, nbins2 );
-  MapFilterFn_shell fn( rad1, rad2 );
-
-  typedef clipper::Xmap<float>::Map_reference_index MRI;
-
-  // FIRST STAGE:
-  // compile the target histograms using the reference data
-  {
-    // constants
-    const int n_hist = 50;     // source histogram sampling
-    const int bin_min = 1000;  // minimum data in source hist
-
-    // get source info
-    const clipper::HKL_info& hkls = ref_f.base_hkl_info();
-
-    // get map coeffs
-    clipper::HKL_data<clipper::data32::Phi_fom> phiw( hkls );
-    clipper::HKL_data<clipper::data32::F_phi> fcal( hkls );
-    clipper::HKL_data<clipper::data32::F_phi> fsim( hkls );
-    phiw.compute( ref_hlcal, clipper::data32::Compute_phifom_from_abcd() );
-    fcal.compute(ref_f,phiw,clipper::data32::Compute_fphi_from_fsigf_phifom());
-    phiw.compute( ref_hlsim, clipper::data32::Compute_phifom_from_abcd() );
-    fsim.compute(ref_f,phiw,clipper::data32::Compute_fphi_from_fsigf_phifom());
-
-    // make electron density map    
-    clipper::Grid_sampling grid( hkls.spacegroup(), hkls.cell(), hkls.resolution()/*, oversam*/ );
-    clipper::Xmap<float> xmap( hkls.spacegroup(), hkls.cell(), grid );
-    xmap.fft_from( fsim );
-    rms_sim = clipper::Map_stats( xmap ).std_dev();
-
-    // calculate local stats and ordinals
-    Map_local_moment_ordinal local_ord( xmap, fn );
-
-    // now get fcalc map
-    xmap.fft_from( fcal );
-    rms_cal = clipper::Map_stats( xmap ).std_dev();
-
-    // find the range of the map
-    clipper::Range<double> maprng;
-    for ( MRI ix = xmap.first(); !ix.last(); ix.next() )
-      maprng.include( xmap[ix] );
-
-    // cut off the most extreme 0.1% each way
-    clipper::Generic_ordinal mapord;
-    mapord.init( maprng );
-    for ( MRI ix = xmap.first(); !ix.last(); ix.next() )
-      mapord.accumulate( xmap[ix] );
-    mapord.prep_ordinal();
-    mapord.invert();
-    hist_range = clipper::Range<double>( mapord.ordinal(0.001),
-					 mapord.ordinal(0.999) );
-
-    // now build the histograms
-    clipper::Histogram hist_null( hist_range, n_hist );
-    hist1 = hist0 =
-      clipper::Array2d<clipper::Histogram>( nbins1, nbins2, hist_null );
-
-    // accumulate initial histograms
-    for ( MRI ix = xmap.first(); !ix.last(); ix.next() )
-      if ( hist_range.contains( xmap[ix] ) ) {
-	int i1 = clipper::Util::intf( nbins1*local_ord.ord_moment_1(ix) );
-	int i2 = clipper::Util::intf( nbins2*local_ord.ord_moment_2(ix) );
-	hist0(i1,i2).accumulate( xmap[ix] );
-      }
-
-    // merge data from adjacent bins if data too sparse
-    for ( int i = 0; i < nbins1; i++ )
-      for ( int j = 0; j < nbins2; j++ ) {
-	hist1(i,j) = hist_null;
-	int box = 0;
-	while ( hist1(i,j).sum() < bin_min ) {
-	  for ( int k = i - box; k <= i + box; k++ )
-	    for ( int l = j - box; l <= j + box; l++ )
-	      if ( k >= 0 && k < nbins1 && l >= 0 && l < nbins2 )
-		hist1(i,j) += hist0(k,l);
-	  box++;
-	}
-      }
-
-    // make minihists from hists
-    for ( int i = 0; i < nbins1; i++ )
-      for ( int j = 0; j < nbins2; j++ )
-	hist_bins( i, j ) = TargetHist( hist1(i,j) );
-  }
-
-  // SECOND STAGE:
-  // compile the target histograms using the reference data
-  {
-    // get source info
-    const clipper::HKL_info& hkls = fphi.base_hkl_info();
-
-    // make map
-    clipper::HKL_data<clipper::data32::Phi_fom> phiw( hkls );
-    phiw.compute( abcd, clipper::data32::Compute_phifom_from_abcd() );
-    fphi.compute( fobs, phiw, clipper::data32::Compute_fphi_from_fsigf_phifom() );
-    clipper::Grid_sampling grid( hkls.spacegroup(), hkls.cell(), hkls.resolution(), oversam );
-    clipper::Xmap<float> xmap( hkls.spacegroup(), hkls.cell(), grid );
-    xmap.fft_from( fphi );
-    rms_wrk = clipper::Map_stats( xmap ).std_dev();
-
-    // calculate local stats and ordinals
-    Map_local_moment_ordinal local_ord( xmap, fn );
-
-    // make the target map
-    clipper::Xmap<TargetHistCompr> target( xmap.spacegroup(), xmap.cell(),
-					   xmap.grid_sampling() );
-    for ( MRI ix = xmap.first(); !ix.last(); ix.next() ) {
-      double x1 = local_ord.ord_moment_1(ix);
-      double x2 = local_ord.ord_moment_2(ix);
-      x1 = skew1*x1/(1.0-(1.0-skew1)*x1);
-      x2 = skew2*x2/(1.0-(1.0-skew2)*x2);
-      int i1 = clipper::Util::intf( nbins1*x1 );
-      int i2 = clipper::Util::intf( nbins2*x2 );
-      target[ix] = TargetHistCompr( hist_bins( i1, i2 ) );
-    }
-
-    // make target fn
-    Xmap_target_minihist xtarget;
-    xtarget.init( target, hist_range );
-
-    // match origin term to zero be shifting histograms
-    xtarget.set_mean( 0.0 );
-
-    // make refinement weights
-    std::vector<std::pair<double,double> > wcyc(ncyc);
-    for ( int i = 0; i < ncyc; i++ ) {
-      double x = double( i + 1 ) / double( ncyc );
-      x = clipper::Util::min( wtrmp*x, 1.0 );
-      if ( !unbias ) {
-	wcyc[i].first  = 1.0;
-	wcyc[i].second = x;
-      } else {
-	wcyc[i].first = 1.0 - x;
-	wcyc[i].second = x;
-      }
-    }
-
-    // refine HL coeffs
-    Refine_HL_coeff refine( wcyc, wtllk );
-    refine( fphi, abcd_new, abcd, fsig, fobs, xtarget );
-
-    // get results
-    rfac_w = refine.r_factor_work();
-    rfac_f = refine.r_factor_free();
-    ecor_w = refine.e_correl_work();
-    ecor_f = refine.e_correl_free();
-    fcor_w = refine.f_correl_work();
-    fcor_f = refine.f_correl_free();
-    llkg_w = refine.llk_gain_work();
-    llkg_f = refine.llk_gain_free();
-
-    // debugging code
-    if ( debug_mode ) {
-      xtarget.debug( fphi );
-      refine.debug( abcd, fsig, xtarget );
-    }
-  }
-
-  return true;
-}
 
 bool Refine_HL_simulate::operator() (
   clipper::HKL_data<clipper::data32::F_phi>& fphi,
@@ -1123,8 +999,8 @@ bool Refine_HL_simulate::operator() (
   const std::vector<Local_rtop>& ncsops )
 {
   // shared data used in both sections:
-  clipper::Range<double> hist_range;
-  clipper::Array2d<TargetHist> hist_bins( nbins1, nbins2 );
+  clipper::Range<double> range_ref;
+  clipper::Array2d<clipper::Histogram> hist_lib( nbins1, nbins2 );
   MapFilterFn_shell fn( rad1, rad2 );
 
   typedef clipper::Xmap<float>::Map_reference_index MRI;
@@ -1133,7 +1009,7 @@ bool Refine_HL_simulate::operator() (
   // compile the target histograms using the reference data
   {
     // constants
-    const int n_hist = 50;     // source histogram sampling
+    const int n_hist = 200;     // source histogram sampling
     const int bin_min = 1000;  // minimum data in source hist
 
     // get source info
@@ -1162,28 +1038,27 @@ bool Refine_HL_simulate::operator() (
     rms_cal = clipper::Map_stats( xmap ).std_dev();
 
     // find the range of the map
-    clipper::Range<double> maprng;
+    clipper::Range<double> range_map;
     for ( MRI ix = xmap.first(); !ix.last(); ix.next() )
-      maprng.include( xmap[ix] );
-
-    // cut off the most extreme 0.1% each way
+      range_map.include( xmap[ix] );
+    // cut off the most extreme 0.1%/0.01% each way
     clipper::Generic_ordinal mapord;
-    mapord.init( maprng );
+    mapord.init( range_map );
     for ( MRI ix = xmap.first(); !ix.last(); ix.next() )
       mapord.accumulate( xmap[ix] );
     mapord.prep_ordinal();
     mapord.invert();
-    hist_range = clipper::Range<double>( mapord.ordinal(0.001),
-					 mapord.ordinal(0.999) );
+    range_ref  = clipper::Range<double>( mapord.ordinal(0.0001),
+					 mapord.ordinal(0.9999) );
 
     // now build the histograms
-    clipper::Histogram hist_null( hist_range, n_hist );
+    clipper::Histogram hist_null( range_map, n_hist );
     hist1 = hist0 =
       clipper::Array2d<clipper::Histogram>( nbins1, nbins2, hist_null );
 
     // accumulate initial histograms
     for ( MRI ix = xmap.first(); !ix.last(); ix.next() )
-      if ( hist_range.contains( xmap[ix] ) ) {
+      if ( range_map.contains( xmap[ix] ) ) {
 	int i1 = clipper::Util::intf( nbins1*local_ord.ord_moment_1(ix) );
 	int i2 = clipper::Util::intf( nbins2*local_ord.ord_moment_2(ix) );
 	hist0(i1,i2).accumulate( xmap[ix] );
@@ -1203,10 +1078,15 @@ bool Refine_HL_simulate::operator() (
 	}
       }
 
-    // make minihists from hists
+    // smooth the histograms
     for ( int i = 0; i < nbins1; i++ )
-      for ( int j = 0; j < nbins2; j++ )
-	hist_bins( i, j ) = TargetHist( hist1(i,j) );
+      for ( int j = 0; j < nbins2; j++ ) {
+	hist0(i,j) = hist1(i,j);
+	hist1(i,j) = HistogramSmoother::smooth_curvature( hist0(i,j) );
+      }
+    //for ( int k = 0; k < n_hist; k++ ) std::cout << k << "\t" << hist0(nbins1-1,nbins2-1).y(k) << "\t" << hist1(nbins1-1,nbins2-1).y(k) << "\n";
+
+    hist_lib = hist1;
   }
 
   // SECOND STAGE:
@@ -1214,13 +1094,15 @@ bool Refine_HL_simulate::operator() (
   {
     // get source info
     const clipper::HKL_info& hkls = fphi.base_hkl_info();
+    const clipper::Spacegroup& spgr = hkls.spacegroup();
+    const clipper::Cell&       cell = hkls.cell();
 
     // make map
     clipper::HKL_data<clipper::data32::Phi_fom> phiw( hkls );
     phiw.compute( abcd, clipper::data32::Compute_phifom_from_abcd() );
     fphi.compute( fobs, phiw, clipper::data32::Compute_fphi_from_fsigf_phifom() );
-    clipper::Grid_sampling grid( hkls.spacegroup(), hkls.cell(), hkls.resolution(), oversam );
-    clipper::Xmap<float> xmap( hkls.spacegroup(), hkls.cell(), grid );
+    clipper::Grid_sampling grid( spgr, cell, hkls.resolution(), oversam );
+    clipper::Xmap<float> xmap( spgr, cell, grid );
     xmap.fft_from( fphi );
     rms_wrk = clipper::Map_stats( xmap ).std_dev();
 
@@ -1228,15 +1110,21 @@ bool Refine_HL_simulate::operator() (
     Map_local_moment_ordinal local_ord( xmap, fn );
 
     // now do the NCS search
-    Search_NCS_from_atom_map ncssrch( 3.0, 0.1 );
+    NCSfind ncsref( 3.0, 0.1 );
     // refine
-    double mskrad = ncsvol*
-      pow(xmap.cell().volume()/double(xmap.spacegroup().num_symops()),0.333);
-    ncsops_ = ncssrch.exclude_inverse( ncsops, xmap.spacegroup(), xmap.cell() );
-    for ( int i = 0; i < ncsops_.size(); i++ ) ncsops_[i] =
-	ncssrch.masked_refine_from_map( xmap, ncsops_[i], mskrad, ncsrad );
+    double mskrad = ncsvol*pow(cell.volume()/double(spgr.num_symops()),0.333);
+    ncsops_ = Local_rtop::exclude_inverse( ncsops, spgr, cell );
+    
+    Local_rtop rtop;
+    std::vector<Local_rtop> ncsops_tmp;
+    for ( int i = 0; i < ncsops_.size(); i++ ) {
+      rtop = ncsref.masked_refine_from_map( xmap, ncsops_[i], mskrad, ncsrad );
+      if ( !rtop.is_null() ) ncsops_tmp.push_back( rtop );
+    }
     // expand
-    ncsops_ = ncssrch.include_inverse( ncsops_, xmap.spacegroup(), xmap.cell() );
+    ncsops_ = Local_rtop::include_inverse( ncsops_tmp, spgr, cell );
+    ncsops_ = Local_rtop::tidy( ncsops_, spgr, cell );
+
     // now generate NCS restrains
     Xmap_ncs xncs;
     xncs.init( xmap.spacegroup(), xmap.cell(), xmap.grid_sampling() );
@@ -1244,7 +1132,26 @@ bool Refine_HL_simulate::operator() (
     for ( int i = 0; i < ncsops_.size(); i++ )
       xncs.restrain_ncs( xmap, ncsops_[i], mskrad, ncsrad );
 
-    /*
+    // find the range of the ncs map
+    clipper::Range<double> range_map, range_wrk;
+    for ( MRI ix = xncs.first(); !ix.last(); ix.next() )
+      range_map.include( xncs[ix].mean() );
+    // cut off the most extreme 0.1%/0.01% each way
+    clipper::Generic_ordinal mapord;
+    mapord.init( range_map );
+    for ( MRI ix = xncs.first(); !ix.last(); ix.next() )
+      mapord.accumulate( xncs[ix].mean() );
+    mapord.prep_ordinal();
+    mapord.invert();
+    range_wrk  = clipper::Range<double>( mapord.ordinal(0.001),
+					 mapord.ordinal(0.999) );
+    //std::cout << "Ranges: " << range_ref.min() << " " << range_ref.max() << " \t" << range_wrk.min() << " " << range_wrk.max() << " \t" << range_map.min() << " " << range_map.max() << "\n";
+    // and extend overall range to include it
+    range_ref.include( range_wrk.min() );
+    range_ref.include( range_wrk.max() );
+    range_ref.include( range_map.min() );
+    range_ref.include( range_map.max() );
+
     clipper::Xmap<float> x1,x2;
     x1.init( xmap.spacegroup(), xmap.cell(), xmap.grid_sampling() );
     x2.init( xmap.spacegroup(), xmap.cell(), xmap.grid_sampling() );
@@ -1252,18 +1159,22 @@ bool Refine_HL_simulate::operator() (
       x1[ix] = xncs[ix].mean();
       x2[ix] = xncs[ix].std_dev();
     }
-    clipper::CCP4MAPfile mapout;
-    mapout.open_write( "x1.map" );
-    mapout.export_xmap( x1 );
-    mapout.close_write();
-    mapout.open_write( "x2.map" );
-    mapout.export_xmap( x2 );
-    mapout.close_write();
-    */
+    //clipper::CCP4MAPfile mapout;
+    //mapout.open_write( "x1.map" );
+    //mapout.export_xmap( x1 );
+    //mapout.close_write();
+    //mapout.open_write( "x2.map" );
+    //mapout.export_xmap( x2 );
+    //mapout.close_write();
+
+    // make minihists from hists
+    clipper::Array2d<TargetHist> hist_bins( nbins1, nbins2 );
+    for ( int i = 0; i < nbins1; i++ )
+      for ( int j = 0; j < nbins2; j++ )
+	hist_bins(i,j) = TargetHist( range_ref, hist_lib(i,j) );
 
     // make the target map
-    clipper::Xmap<TargetHistCompr> target( xmap.spacegroup(), xmap.cell(),
-					   xmap.grid_sampling() );
+    clipper::Xmap<TargetHistCompr> target( spgr, cell, xmap.grid_sampling() );
     for ( MRI ix = xmap.first(); !ix.last(); ix.next() ) {
       double x1 = local_ord.ord_moment_1(ix);
       double x2 = local_ord.ord_moment_2(ix);
@@ -1272,13 +1183,138 @@ bool Refine_HL_simulate::operator() (
       int i1 = clipper::Util::intf( nbins1*x1 );
       int i2 = clipper::Util::intf( nbins2*x2 );
       TargetHist h1 = hist_bins( i1, i2 );
-      TargetHist h2( hist_range, xncs[ix].mean(), xncs[ix].std_dev() );
+      TargetHist h2( range_ref, xncs[ix].mean(), xncs[ix].std_dev() );
       target[ix] = TargetHistCompr( h1*h2 );
     }
 
     // make target fn
     Xmap_target_minihist xtarget;
-    xtarget.init( target, hist_range );
+    xtarget.init( target, range_ref );
+
+    // match origin term to zero be shifting histograms
+    xtarget.set_mean( 0.0 );
+
+    // make refinement weights
+    std::vector<std::pair<double,double> > wcyc(ncyc);
+    for ( int i = 0; i < ncyc; i++ ) {
+      double x = double( i + 1 ) / double( ncyc );
+      x = clipper::Util::min( wtrmp*x, 1.0 );
+      if ( !unbias ) {
+	wcyc[i].first  = 1.0;
+	wcyc[i].second = x;
+      } else {
+	wcyc[i].first = 1.0 - x;
+	wcyc[i].second = x;
+      }
+    }
+
+    // refine HL coeffs
+    Refine_HL_coeff refine( wcyc, wtllk );
+    refine( fphi, abcd_new, abcd, fsig, fobs, xtarget );
+
+    // get results
+    rfac_w = refine.r_factor_work();
+    rfac_f = refine.r_factor_free();
+    ecor_w = refine.e_correl_work();
+    ecor_f = refine.e_correl_free();
+    fcor_w = refine.f_correl_work();
+    fcor_f = refine.f_correl_free();
+    llkg_w = refine.llk_gain_work();
+    llkg_f = refine.llk_gain_free();
+
+    // debugging code
+    if ( debug_mode ) {
+      xtarget.debug( fphi );
+      refine.debug( abcd, fsig, xtarget );
+    }
+  }
+
+  return true;
+}
+
+bool Refine_HL_simulate::operator() (
+  clipper::HKL_data<clipper::data32::F_phi>& fphi,
+  clipper::HKL_data<clipper::data32::ABCD>& abcd_new,
+  const clipper::HKL_data<clipper::data32::F_sigF>& fsig,
+  const clipper::HKL_data<clipper::data32::F_sigF>& fobs,
+  const clipper::HKL_data<clipper::data32::ABCD>& abcd,
+  const std::vector<Local_rtop>& ncsops )
+{
+  clipper::Range<double> range_ref( -1.0, 1.0 );
+  typedef clipper::Xmap<float>::Map_reference_index MRI;
+
+  {
+    // get source info
+    const clipper::HKL_info& hkls = fphi.base_hkl_info();
+    const clipper::Spacegroup& spgr = hkls.spacegroup();
+    const clipper::Cell&       cell = hkls.cell();
+
+    // make map
+    clipper::HKL_data<clipper::data32::Phi_fom> phiw( hkls );
+    phiw.compute( abcd, clipper::data32::Compute_phifom_from_abcd() );
+    fphi.compute( fobs, phiw, clipper::data32::Compute_fphi_from_fsigf_phifom() );
+    clipper::Grid_sampling grid( spgr, cell, hkls.resolution(), oversam );
+    clipper::Xmap<float> xmap( spgr, cell, grid );
+    xmap.fft_from( fphi );
+    rms_wrk = clipper::Map_stats( xmap ).std_dev();
+
+    // expand
+    ncsops_ = Local_rtop::include_inverse( ncsops, spgr, cell );
+    ncsops_ = Local_rtop::tidy( ncsops_, spgr, cell );
+
+    // now generate NCS restrains
+    double mskrad = ncsvol*pow(cell.volume()/double(spgr.num_symops()),0.333);
+    Xmap_ncs xncs;
+    xncs.init( xmap.spacegroup(), xmap.cell(), xmap.grid_sampling() );
+    xncs = Gaussian_probability_1d( 0.0, 1.0e6 );
+    for ( int i = 0; i < ncsops_.size(); i++ )
+      xncs.restrain_ncs( xmap, ncsops_[i], mskrad, ncsrad );
+
+    // find the range of the ncs map
+    clipper::Range<double> range_map, range_wrk;
+    for ( MRI ix = xncs.first(); !ix.last(); ix.next() )
+      range_map.include( xncs[ix].mean() );
+    // cut off the most extreme 0.1%/0.01% each way
+    clipper::Generic_ordinal mapord;
+    mapord.init( range_map );
+    for ( MRI ix = xncs.first(); !ix.last(); ix.next() )
+      mapord.accumulate( xncs[ix].mean() );
+    mapord.prep_ordinal();
+    mapord.invert();
+    range_wrk  = clipper::Range<double>( mapord.ordinal(0.001),
+					 mapord.ordinal(0.999) );
+    //std::cout << "Ranges: " << range_ref.min() << " " << range_ref.max() << " \t" << range_wrk.min() << " " << range_wrk.max() << " \t" << range_map.min() << " " << range_map.max() << "\n";
+    // and extend overall range to include it
+    range_ref.include( range_wrk.min() );
+    range_ref.include( range_wrk.max() );
+    range_ref.include( range_map.min() );
+    range_ref.include( range_map.max() );
+
+    clipper::Xmap<float> x1,x2;
+    x1.init( xmap.spacegroup(), xmap.cell(), xmap.grid_sampling() );
+    x2.init( xmap.spacegroup(), xmap.cell(), xmap.grid_sampling() );
+    for ( MRI ix = xncs.first(); !ix.last(); ix.next() ) {
+      x1[ix] = xncs[ix].mean();
+      x2[ix] = xncs[ix].std_dev();
+    }
+    //clipper::CCP4MAPfile mapout;
+    //mapout.open_write( "x1.map" );
+    //mapout.export_xmap( x1 );
+    //mapout.close_write();
+    //mapout.open_write( "x2.map" );
+    //mapout.export_xmap( x2 );
+    //mapout.close_write();
+
+    // make the target map
+    clipper::Xmap<TargetHistCompr> target( spgr, cell, xmap.grid_sampling() );
+    for ( MRI ix = xmap.first(); !ix.last(); ix.next() ) {
+      TargetHist h2( range_ref, xncs[ix].mean(), xncs[ix].std_dev() );
+      target[ix] = TargetHistCompr( h2 );
+    }
+
+    // make target fn
+    Xmap_target_minihist xtarget;
+    xtarget.init( target, range_ref );
 
     // match origin term to zero be shifting histograms
     xtarget.set_mean( 0.0 );
@@ -1323,164 +1359,178 @@ bool Refine_HL_simulate::operator() (
 
 
 
-MapSimulate::MapSimulate( int nresbins, int binmin )
+
+double Refine_HL_simulate::correl_moment_1(
+  clipper::HKL_data<clipper::data32::F_phi>& fphi,
+  clipper::HKL_data<clipper::data32::ABCD>& abcd_new,
+  const clipper::HKL_data<clipper::data32::F_sigF>& fsig,
+  const clipper::HKL_data<clipper::data32::F_sigF>& fobs,
+  const clipper::HKL_data<clipper::data32::ABCD>& abcd,
+  const clipper::HKL_data<clipper::data32::F_sigF>& ref_f,
+  const clipper::HKL_data<clipper::data32::ABCD>& ref_hlcal,
+  const clipper::HKL_data<clipper::data32::ABCD>& ref_hlsim,
+  const std::vector<Local_rtop>& ncsops )
 {
-  n_res_bins = nresbins;
-  bin_min = binmin;
+  // shared data used in both sections:
+  clipper::Range<double> range_ref;
+  clipper::Generic_ordinal ord_ref, ord_wrk;
+  MapFilterFn_shell fn( rad1, rad2 );
+  double correl;
+
+  typedef clipper::Xmap<float>::Map_reference_index MRI;
+
+  // FIRST STAGE:
+  // compile the target histograms using the reference data
+  {
+    // constants
+    const int n_hist = 200;     // source histogram sampling
+    const int bin_min = 1000;  // minimum data in source hist
+
+    // get source info
+    const clipper::HKL_info& hkls = ref_f.base_hkl_info();
+
+    // get map coeffs
+    clipper::HKL_data<clipper::data32::Phi_fom> phiw( hkls );
+    clipper::HKL_data<clipper::data32::F_phi> fsim( hkls );
+    phiw.compute( ref_hlsim, clipper::data32::Compute_phifom_from_abcd() );
+    fsim.compute( ref_f, phiw, clipper::data32::Compute_fphi_from_fsigf_phifom());
+    clipper::Grid_sampling grid( hkls.spacegroup(), hkls.cell(), hkls.resolution()/*, oversam*/ );
+    clipper::Xmap<float> xmap( hkls.spacegroup(), hkls.cell(), grid );
+    xmap.fft_from( fsim );
+    rms_sim = clipper::Map_stats( xmap ).std_dev();
+
+    // calculate local stats and ordinals
+    Map_local_moment_ordinal local_ord( xmap, fn );
+    ord_ref = local_ord.ordinal_fn_moment_1();
+  }
+  ord_ref.invert();
+
+  // SECOND STAGE:
+  // compile the target histograms using the reference data
+  {
+    // get source info
+    const clipper::HKL_info& hkls = fphi.base_hkl_info();
+    const clipper::Spacegroup& spgr = hkls.spacegroup();
+    const clipper::Cell&       cell = hkls.cell();
+
+    // make map
+    clipper::HKL_data<clipper::data32::Phi_fom> phiw( hkls );
+    phiw.compute( abcd, clipper::data32::Compute_phifom_from_abcd() );
+    fphi.compute( fobs, phiw, clipper::data32::Compute_fphi_from_fsigf_phifom() );
+    clipper::Grid_sampling grid( spgr, cell, hkls.resolution(), oversam );
+    clipper::Xmap<float> xmap( spgr, cell, grid );
+    xmap.fft_from( fphi );
+    rms_wrk = clipper::Map_stats( xmap ).std_dev();
+
+    // calculate local stats and ordinals
+    Map_local_moment_ordinal local_ord( xmap, fn );
+    ord_wrk = local_ord.ordinal_fn_moment_1();
+
+    // make the target map
+    clipper::Xmap<TargetHistCompr> target( spgr, cell, xmap.grid_sampling() );
+    double sn, sx, sy, sxx, syy, sxy;
+    sn = sx = sy = sxx = syy = sxy = 0.0;
+    for ( MRI ix = xmap.first(); !ix.last(); ix.next() ) {
+      double x = local_ord.local_moment_1()[ix];
+      double o1 = ord_wrk.ordinal(x);
+      double o2 = skew1*o1/(1.0-(1.0-skew1)*o1);
+      double y = ord_ref.ordinal( o2 );
+      sn += 1.0;
+      sx += x;
+      sy += y;
+      sxx += x*x;
+      syy += y*y;
+      sxy += x*y;
+    }
+    correl = (sn*sxy-sx*sy)/sqrt((sn*sxx-sx*sx)*(sn*syy-sy*sy));
+  }
+  return correl;
 }
 
-
-bool MapSimulate::operator()
-  ( clipper::HKL_data<clipper::data32::F_sigF>& sim_f,
-    clipper::HKL_data<clipper::data32::ABCD>& sim_hl,
-    const clipper::HKL_data<clipper::data32::F_sigF>& ref_f,
-    const clipper::HKL_data<clipper::data32::ABCD>& ref_hl,
-    const clipper::HKL_data<clipper::data32::F_sigF>& wrk_f,
-    const clipper::HKL_data<clipper::data32::ABCD>& wrk_hl ) const
+double Refine_HL_simulate::correl_moment_2(
+  clipper::HKL_data<clipper::data32::F_phi>& fphi,
+  clipper::HKL_data<clipper::data32::ABCD>& abcd_new,
+  const clipper::HKL_data<clipper::data32::F_sigF>& fsig,
+  const clipper::HKL_data<clipper::data32::F_sigF>& fobs,
+  const clipper::HKL_data<clipper::data32::ABCD>& abcd,
+  const clipper::HKL_data<clipper::data32::F_sigF>& ref_f,
+  const clipper::HKL_data<clipper::data32::ABCD>& ref_hlcal,
+  const clipper::HKL_data<clipper::data32::ABCD>& ref_hlsim,
+  const std::vector<Local_rtop>& ncsops )
 {
-  // get hkls
-  const clipper::HKL_info& ref_hkl = ref_f.base_hkl_info();
-  const clipper::HKL_info& wrk_hkl = wrk_f.base_hkl_info();
-  clipper::HKL_info::HKL_reference_index ih;
+  // shared data used in both sections:
+  clipper::Range<double> range_ref;
+  clipper::Generic_ordinal ord_ref, ord_wrk;
+  MapFilterFn_shell fn( rad1, rad2 );
+  double correl;
 
-  // get phases
-  clipper::HKL_data<clipper::data32::Phi_fom> ref_phi( ref_hkl );
-  clipper::HKL_data<clipper::data32::Phi_fom> wrk_phi( wrk_hkl );
-  ref_phi.compute( ref_hl, clipper::data32::Compute_phifom_from_abcd() );
-  wrk_phi.compute( wrk_hl, clipper::data32::Compute_phifom_from_abcd() );
+  typedef clipper::Xmap<float>::Map_reference_index MRI;
 
-  // make E's
-  const int n_scl_param = 10;
-  clipper::HKL_data<clipper::data32::E_sigE> ref_e( ref_hkl );
-  clipper::HKL_data<clipper::data32::E_sigE> wrk_e( wrk_hkl );
-  ref_e.compute( ref_f, clipper::data32::Compute_EsigE_from_FsigF() );
-  wrk_e.compute( wrk_f, clipper::data32::Compute_EsigE_from_FsigF() );
-  std::vector<double> params( n_scl_param, 1.0 );
-  // scale reference data
-  std::vector<double> ref_list_res;
-  clipper::BasisFn_spline ref_basis( ref_e, n_scl_param, 2.0 );
-  clipper::TargetFn_scaleEsq<clipper::data32::E_sigE> ref_target( ref_e );
-  clipper::ResolutionFn ref_scale( ref_hkl, ref_basis, ref_target, params );
-  for ( ih = ref_hkl.first(); !ih.last(); ih.next() )
-    if ( !ref_e[ih].missing() ) {
-      ref_e[ih].scale( sqrt( ref_scale.f(ih) ) );  // scale
-      ref_list_res.push_back( ih.invresolsq() );   // store resol
-    }
-  // scale work data
-  std::vector<double> wrk_list_res;
-  clipper::BasisFn_spline wrk_basis( wrk_e, n_scl_param, 2.0 );
-  clipper::TargetFn_scaleEsq<clipper::data32::E_sigE> wrk_target( wrk_e );
-  clipper::ResolutionFn wrk_scale( wrk_hkl, wrk_basis, wrk_target, params );
-  for ( ih = wrk_hkl.first(); !ih.last(); ih.next() )
-    if ( !wrk_e[ih].missing() ) {
-      wrk_e[ih].scale( sqrt( wrk_scale.f(ih) ) );  // scale
-      wrk_list_res.push_back( ih.invresolsq() );   // store resol
-    }
+  // FIRST STAGE:
+  // compile the target histograms using the reference data
+  {
+    // constants
+    const int n_hist = 200;     // source histogram sampling
+    const int bin_min = 1000;  // minimum data in source hist
 
-  // Now scale reference data to match work
-  double cellscale = ref_hkl.cell().volume() / wrk_hkl.cell().volume();
-  for ( ih = ref_hkl.first(); !ih.last(); ih.next() )
-    if ( !ref_f[ih].missing() ) {
-      double s = ih.hkl().invresolsq( ref_hkl.cell() );
-      sim_f[ih] = ref_f[ih];
-      sim_f[ih].scale( sqrt( cellscale
-			     * ref_basis.f_s( s, ref_scale.params() )
-			     / wrk_basis.f_s( s, wrk_scale.params() ) ) );
-    }
+    // get source info
+    const clipper::HKL_info& hkls = ref_f.base_hkl_info();
 
-  // make ordinals
-  clipper::Generic_ordinal ref_ord_res;
-  clipper::Generic_ordinal wrk_ord_res;
-  ref_ord_res.init( ref_list_res );
-  wrk_ord_res.init( wrk_list_res );
+    // get map coeffs
+    clipper::HKL_data<clipper::data32::Phi_fom> phiw( hkls );
+    clipper::HKL_data<clipper::data32::F_phi> fsim( hkls );
+    phiw.compute( ref_hlsim, clipper::data32::Compute_phifom_from_abcd() );
+    fsim.compute( ref_f, phiw, clipper::data32::Compute_fphi_from_fsigf_phifom());
+    clipper::Grid_sampling grid( hkls.spacegroup(), hkls.cell(), hkls.resolution()/*, oversam*/ );
+    clipper::Xmap<float> xmap( hkls.spacegroup(), hkls.cell(), grid );
+    xmap.fft_from( fsim );
+    rms_sim = clipper::Map_stats( xmap ).std_dev();
 
-  std::vector<std::vector<int> > ref_acen(n_res_bins), ref_ccen(n_res_bins);
-  std::vector<std::vector<int> > wrk_acen(n_res_bins), wrk_ccen(n_res_bins);
-
-  // now bin the work structure foms by resolution
-  for ( ih = ref_hkl.first(); !ih.last(); ih.next() )
-    if ( !ref_e[ih].missing() && !ref_phi[ih].missing() ) {
-      int ires = clipper::Util::intf( double( n_res_bins ) *
-				      ref_ord_res.ordinal( ih.invresolsq() ) );
-      if ( ih.hkl_class().centric() )
-	ref_ccen[ires].push_back( ih.index() );
-      else
-	ref_acen[ires].push_back( ih.index() );
-    }
-  for ( ih = wrk_hkl.first(); !ih.last(); ih.next() )
-    if ( !wrk_e[ih].missing() && !wrk_phi[ih].missing() ) {
-      int ires = clipper::Util::intf( double( n_res_bins ) *
-				      wrk_ord_res.ordinal( ih.invresolsq() ) );
-      if ( ih.hkl_class().centric() )
-	wrk_ccen[ires].push_back( ih.index() );
-      else
-	wrk_acen[ires].push_back( ih.index() );
-    }
-
-  // pad the centric bins if too sparse
-  std::vector<std::vector<int> > tmp_ccen = wrk_ccen;
-  for ( int i = 0; i < n_res_bins; i++ ) {
-    int j = 1;
-    while ( tmp_ccen[i].size() < bin_min && j < n_res_bins ) {
-      if ( i+j >= 0 && i+j < n_res_bins )
-	tmp_ccen[i].insert( tmp_ccen[i].end(),
-			    wrk_ccen[i+j].begin(), wrk_ccen[i+j].end() );
-      j = ( j > 0 ) ? ( -j ) : ( -j + 1 );
-    }
+    // calculate local stats and ordinals
+    Map_local_moment_ordinal local_ord( xmap, fn );
+    ord_ref = local_ord.ordinal_fn_moment_2();
   }
-  wrk_ccen = tmp_ccen;
-  for ( int i = 0; i < n_res_bins; i++ ) {
-    if ( wrk_ccen[i].size() == 0 ) wrk_ccen[i] = wrk_acen[i];
-    if ( ref_ccen[i].size() == 0 ) ref_ccen[i] = ref_acen[i];
-  }
+  ord_ref.invert();
 
-  // sort fom's by magnitude
-  for ( int i = 0; i < n_res_bins; i++ ) {
-    std::sort( ref_acen[i].begin(), ref_acen[i].end(), EMagCompare( ref_e ) );
-    std::sort( ref_ccen[i].begin(), ref_ccen[i].end(), EMagCompare( ref_e ) );
-    std::sort( wrk_acen[i].begin(), wrk_acen[i].end(), EMagCompare( wrk_e ) );
-    std::sort( wrk_ccen[i].begin(), wrk_ccen[i].end(), EMagCompare( wrk_e ) );
-  }
+  // SECOND STAGE:
+  // compile the target histograms using the reference data
+  {
+    // get source info
+    const clipper::HKL_info& hkls = fphi.base_hkl_info();
+    const clipper::Spacegroup& spgr = hkls.spacegroup();
+    const clipper::Cell&       cell = hkls.cell();
 
-  // Transfer foms to reference structure
-  for ( int i = 0; i < n_res_bins; i++ ) {
-    for ( int j = 0; j < ref_acen[i].size(); j++ ) {
-      int k = clipper::Util::intf(double(j)*double(wrk_acen[i].size())
-				           /double(ref_acen[i].size()));
-      ref_phi[ref_acen[i][j]].fom() = wrk_phi[wrk_acen[i][k]].fom();
+    // make map
+    clipper::HKL_data<clipper::data32::Phi_fom> phiw( hkls );
+    phiw.compute( abcd, clipper::data32::Compute_phifom_from_abcd() );
+    fphi.compute( fobs, phiw, clipper::data32::Compute_fphi_from_fsigf_phifom() );
+    clipper::Grid_sampling grid( spgr, cell, hkls.resolution(), oversam );
+    clipper::Xmap<float> xmap( spgr, cell, grid );
+    xmap.fft_from( fphi );
+    rms_wrk = clipper::Map_stats( xmap ).std_dev();
+
+    // calculate local stats and ordinals
+    Map_local_moment_ordinal local_ord( xmap, fn );
+    ord_wrk = local_ord.ordinal_fn_moment_2();
+
+    // make the target map
+    clipper::Xmap<TargetHistCompr> target( spgr, cell, xmap.grid_sampling() );
+    double sn, sx, sy, sxx, syy, sxy;
+    sn = sx = sy = sxx = syy = sxy = 0.0;
+    for ( MRI ix = xmap.first(); !ix.last(); ix.next() ) {
+      double x = local_ord.local_moment_2()[ix];
+      double o1 = ord_wrk.ordinal(x);
+      double o2 = skew2*o1/(1.0-(1.0-skew2)*o1);
+      double y = ord_ref.ordinal( o2 );
+      sn += 1.0;
+      sx += x;
+      sy += y;
+      sxx += x*x;
+      syy += y*y;
+      sxy += x*y;
     }
-    for ( int j = 0; j < ref_ccen[i].size(); j++ ) {
-      int k = clipper::Util::intf(double(j)*double(wrk_ccen[i].size())
-				           /double(ref_ccen[i].size()));
-      ref_phi[ref_ccen[i][j]].fom() = wrk_phi[wrk_ccen[i][k]].fom();
-    }
+    correl = (sn*sxy-sx*sy)/sqrt((sn*sxx-sx*sx)*(sn*syy-sy*sy));
   }
-
-  // Make phase errors to go with FOMs
-  for ( ih = ref_hkl.first(); !ih.last(); ih.next() ) {
-    double dphi;
-    double fom = ref_phi[ih].fom();
-    if ( ih.hkl_class().centric() ) {  // deal with centrics
-      double prob = 0.5 * ( 1.0 + fom );
-      if ( (0.001*double(rand()%1000)) < prob )
-	dphi = 0.0;
-      else
-	dphi = clipper::Util::pi();
-    } else {                           // deal with acentrics
-      int i;
-      double x = clipper::Util::invsim( fom );
-      for ( i = 0; i < 100; i++ ) {
-	dphi = clipper::Util::twopi()*(0.001*double(rand()%1000));
-	double prob = exp(x*(cos(dphi)-1.0));
-	if ( (0.001*double(rand()%1000)) < prob ) break;
-      }
-      if ( i == 100 ) dphi = 0.0;
-    }
-    ref_phi[ih].phi() += dphi;
-  }
-
-  // calculate sim hl coeffs
-  sim_hl.compute( ref_phi, clipper::data32::Compute_abcd_from_phifom() );
-
-  return true;
+  return correl;
 }
+

@@ -113,7 +113,7 @@ am__quote = @am__quote@
 install_sh = @install_sh@
 bin_PROGRAMS = cpirate cmakereference
 
-cpirate_SOURCES = cpirate.cpp piralib.cpp piralib.h pirancslib.cpp pirancslib.h
+cpirate_SOURCES = cpirate.cpp simulate-lib.cpp pirate-lib.cpp pirate-ncsaver.cpp pirate-ncsfind.cpp simplex-lib.cpp simulate-lib.h pirate-lib.h pirate-ncsaver.h pirate-ncsfind.h simplex-lib.h
 
 cmakereference_SOURCES = cmakereference.cpp ftplib.h ftplib.c compress42.c
 
@@ -145,8 +145,9 @@ cmakereference_DEPENDENCIES = \
 	../../clipper/phs/libclipper-phs.la \
 	../../clipper/core/libclipper-core.la
 cmakereference_LDFLAGS =
-am_cpirate_OBJECTS = cpirate.$(OBJEXT) piralib.$(OBJEXT) \
-	pirancslib.$(OBJEXT)
+am_cpirate_OBJECTS = cpirate.$(OBJEXT) simulate-lib.$(OBJEXT) \
+	pirate-lib.$(OBJEXT) pirate-ncsaver.$(OBJEXT) \
+	pirate-ncsfind.$(OBJEXT) simplex-lib.$(OBJEXT)
 cpirate_OBJECTS = $(am_cpirate_OBJECTS)
 cpirate_LDADD = $(LDADD)
 cpirate_DEPENDENCIES = ../../clipper/contrib/libclipper-contrib.la \
@@ -165,8 +166,11 @@ depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
 @AMDEP_TRUE@DEP_FILES = ./$(DEPDIR)/cmakereference.Po \
 @AMDEP_TRUE@	./$(DEPDIR)/compress42.Po ./$(DEPDIR)/cpirate.Po \
-@AMDEP_TRUE@	./$(DEPDIR)/ftplib.Po ./$(DEPDIR)/piralib.Po \
-@AMDEP_TRUE@	./$(DEPDIR)/pirancslib.Po
+@AMDEP_TRUE@	./$(DEPDIR)/ftplib.Po ./$(DEPDIR)/pirate-lib.Po \
+@AMDEP_TRUE@	./$(DEPDIR)/pirate-ncsaver.Po \
+@AMDEP_TRUE@	./$(DEPDIR)/pirate-ncsfind.Po \
+@AMDEP_TRUE@	./$(DEPDIR)/simplex-lib.Po \
+@AMDEP_TRUE@	./$(DEPDIR)/simulate-lib.Po
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
 LTCOMPILE = $(LIBTOOL) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) \
@@ -243,8 +247,11 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/compress42.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cpirate.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ftplib.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/piralib.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pirancslib.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pirate-lib.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pirate-ncsaver.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pirate-ncsfind.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/simplex-lib.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/simulate-lib.Po@am__quote@
 
 distclean-depend:
 	-rm -rf ./$(DEPDIR)

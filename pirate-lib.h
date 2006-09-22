@@ -1,17 +1,12 @@
-/*! \file piralib.h pirate library */
+/*! \file pirate-lib.h pirate library */
 /* Copyright 2003-2005 Kevin Cowtan & University of York all rights reserved */
-
-//L   This code is distributed under the terms and conditions of the
-//L   CCP4 Program Suite Licence Agreement as a CCP4 Application.
-//L   A copy of the CCP4 licence can be obtained by writing to the
-//L   CCP4 Secretary, Daresbury Laboratory, Warrington WA4 4AD, UK.
 
 #include <clipper/clipper.h>
 #include <clipper/clipper-contrib.h>
 
 #include <map>
 
-#include "pirancslib.h"
+#include "pirate-ncsaver.h"
 
 
 //! Reflection data type: Argand gradient
@@ -68,37 +63,6 @@ class Xmap_target_base {
 };
 
 
-//! Class for compact representation of a probability histogram
-/*! This class represents probability distributions for unitary
-  variables, and in particular unitary electron densities, using the
-  sun of a set of Gaussians of equal width and spacing. The Gaussian
-  coefficients are represented by bytes holding the square-root of the
-  height (i.e. quadratic compression to increase dynamic range). The
-  width of the Gaussians is determined such the the inflections of
-  neighbouring Gaussians intersect, i.e. spacing is 2 sigma. The
-  number of Gaussians is determined by the template parameter. The
-  overall scale is lost, so these are more useful for storing
-  log-likelioohs.
-*/
-template<int N> class MiniHist {
- public:
-  //! null constructor
-  MiniHist() {}
-  //! constructor: initialise from data
-  MiniHist( const clipper::Histogram& hist );
-  //! return value and derivatives of function
-  void func_curv( const double& x, double& func, double& grad, double& curv ) const;
-  //! return value and derivatives of log-likelihood of function
-  void llk_curv( const double& x, double& func, double& grad, double& curv ) const;
-  //! return mean of function
-  double mean() const;
-  //! read/write member data directly
-  unsigned char& operator[] ( const int& i ) { return data[i]; }
- private:
-  unsigned char data[N];
-};
-
-
 //! Class for representation of a probability histogram
 /*! This class represents probability distributions for unitary
   variables, and in particular unitary electron densities, using the
@@ -115,6 +79,8 @@ template<int N> class GaussianHistogram {
   GaussianHistogram() {}
   //! constructor: initialise from data
   GaussianHistogram( const clipper::Histogram& hist );
+  //! constructor: initialise from data
+  GaussianHistogram( const clipper::Range<double>& range, const clipper::Histogram& hist );
   //! constructor: initialise from range and Gaussian params
   GaussianHistogram( const clipper::Range<double>& range, const double& mean, const double& std_dev );
   //! read member data directly
@@ -167,8 +133,8 @@ template<int N> class GaussianHistogramCompressed {
 };
 
 
-typedef GaussianHistogram<16> TargetHist;
-typedef GaussianHistogramCompressed<16> TargetHistCompr;
+typedef GaussianHistogram<48> TargetHist;
+typedef GaussianHistogramCompressed<48> TargetHistCompr;
 
 
 //! Class for calculating a probability histogram based Xmap target
@@ -264,6 +230,10 @@ class Map_local_moment_ordinal {
   Map_local_moment_ordinal( const clipper::Xmap<float>& xmap, const clipper::MapFilterFn_base& fn );
   double ord_moment_1( const clipper::Xmap<float>::Map_reference_index& ix ) const { return ord_mom1.ordinal( lmom1[ix] ); }
   double ord_moment_2( const clipper::Xmap<float>::Map_reference_index& ix ) const { return ord_mom2.ordinal( lmom2[ix] ); }
+  const clipper::Xmap<float>& local_moment_1() const {return lmom1;}
+  const clipper::Xmap<float>& local_moment_2() const {return lmom2;}
+  const clipper::Generic_ordinal& ordinal_fn_moment_1() const {return ord_mom1;}
+  const clipper::Generic_ordinal& ordinal_fn_moment_2() const {return ord_mom2;}
  private:
   clipper::Xmap<float> lmom1, lmom2;
   clipper::Generic_ordinal ord_mom1, ord_mom2;
@@ -286,8 +256,24 @@ class Refine_HL_simulate {
 		    const clipper::HKL_data<clipper::data32::ABCD>& abcd,
 		    const clipper::HKL_data<clipper::data32::F_sigF>& ref_f,
 		    const clipper::HKL_data<clipper::data32::ABCD>& ref_hlcal,
-		    const clipper::HKL_data<clipper::data32::ABCD>& ref_hlsim );
+		    const clipper::HKL_data<clipper::data32::ABCD>& ref_hlsim,
+		    const std::vector<Local_rtop>& ncsops );
   bool operator() ( clipper::HKL_data<clipper::data32::F_phi>& fphi,
+		    clipper::HKL_data<clipper::data32::ABCD>& abcd_new,
+		    const clipper::HKL_data<clipper::data32::F_sigF>& fsig,
+		    const clipper::HKL_data<clipper::data32::F_sigF>& fobs,
+		    const clipper::HKL_data<clipper::data32::ABCD>& abcd,
+		    const std::vector<Local_rtop>& ncsops );
+  double correl_moment_1( clipper::HKL_data<clipper::data32::F_phi>& fphi,
+		    clipper::HKL_data<clipper::data32::ABCD>& abcd_new,
+		    const clipper::HKL_data<clipper::data32::F_sigF>& fsig,
+		    const clipper::HKL_data<clipper::data32::F_sigF>& fobs,
+		    const clipper::HKL_data<clipper::data32::ABCD>& abcd,
+		    const clipper::HKL_data<clipper::data32::F_sigF>& ref_f,
+		    const clipper::HKL_data<clipper::data32::ABCD>& ref_hlcal,
+		    const clipper::HKL_data<clipper::data32::ABCD>& ref_hlsim,
+		    const std::vector<Local_rtop>& ncsops );
+  double correl_moment_2( clipper::HKL_data<clipper::data32::F_phi>& fphi,
 		    clipper::HKL_data<clipper::data32::ABCD>& abcd_new,
 		    const clipper::HKL_data<clipper::data32::F_sigF>& fsig,
 		    const clipper::HKL_data<clipper::data32::F_sigF>& fobs,
@@ -324,28 +310,3 @@ class Refine_HL_simulate {
   clipper::Array2d<clipper::Histogram> hist0, hist1;
   double rms_cal, rms_sim, rms_wrk;
 };
-
-
-//! Map simulation class
-/* This class simulates a set of HL coeffs for a reference structure
-   (A & B only) matching the properties of the coefficients of a work
-   structure. */
-class MapSimulate {
- public:
-  MapSimulate( int nresbins = 100, int binmin = 20 );
-  bool operator() ( clipper::HKL_data<clipper::data32::F_sigF>& sim_f,
-		    clipper::HKL_data<clipper::data32::ABCD>& sim_hl,
-		    const clipper::HKL_data<clipper::data32::F_sigF>& ref_f,
-		    const clipper::HKL_data<clipper::data32::ABCD>& ref_hl,
-		    const clipper::HKL_data<clipper::data32::F_sigF>& wrk_f,
-		    const clipper::HKL_data<clipper::data32::ABCD>& wrk_hl ) const;
- private:
-  class EMagCompare {
-  public:
-    EMagCompare(const clipper::HKL_data<clipper::data32::E_sigE>& m ) { p = &m; }
-    bool operator() ( const int& i1, const int& i2 ) const { return (*p)[i1].E() < (*p)[i2].E(); }
-    const clipper::HKL_data<clipper::data32::E_sigE>* p;
-  };
-  int n_res_bins, bin_min;
-};
-
