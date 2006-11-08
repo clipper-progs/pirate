@@ -849,23 +849,15 @@ std::vector<Local_rtop> NCSfind::filter_ncs_candidates( const std::vector<Local_
 
   // calculate density cutoff from arbitrary RTops
   double s0(0.0), s1(0.0), s2(0.0), cutoff;
-#if defined (__GNUC__) && __GNUC__ <= 3
-  Local_rtop rtrand;
-#endif
   for ( int r = 0; r < 5; r++ )
     for ( int a0 = 0; a0 < atoms.size()-1; a0++ )
       for ( int a1 = a0+1; a1 < atoms.size(); a1++ ) {
 	if ( s0 > 1000.0 ) break;
 	double r1 = double(r+a0+a1);
 	clipper::Euler_ccp4 rot( 2.0*r1, 3.0*r1, 5.0*r1 );
-#if defined (__GNUC__) && __GNUC__ <= 3
-	rtrand.rot() = clipper::Rotation(rot);
-	rtrand.src() = atoms[a0].coord_orth();
-	rtrand.tgt() = atoms[a1].coord_orth();
-#else
-        Local_rtop rtrand( clipper::Rotation( rot ),
+        clipper::Rotation rtmp( rot );
+        Local_rtop rtrand( rtmp,
                           atoms[a0].coord_orth(), atoms[a1].coord_orth() );
-#endif
 	double result = mr( rtrand );
 	s0 += 1.0;
 	s1 += result;
