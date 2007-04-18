@@ -232,7 +232,7 @@ template<int N> void GaussianHistogramCompressed<N>::func_curv( const double& x,
       f = f * f * exp( -0.5 * b * dx * dx );
       func += f;
       grad += -b * dx * f;
-      curv += b * ( b * dx * dx - 1.0 ) * f;
+      curv += (b * f) * ( b * dx * dx - 1.0 );
     }
   }
 }
