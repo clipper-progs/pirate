@@ -10,7 +10,9 @@
 extern "C" {
 #if defined _MSC_VER
  #include <io.h>
+ #define MY_RDONLY O_RDONLY|O_BINARY
 #else
+ #define MY_RDONLY O_RDONLY
  #include <unistd.h>
 #endif
 #include <sys/types.h>
@@ -149,7 +151,7 @@ int main( int argc, char** argv )
   if ( pdbfilez.substr( pdbfilez.length() - 2 ) == ".Z" ) {
     std::cout << "Decompressing coordinates...\n\n";
     pdbfile = pdbfilez.substr( 0, pdbfilez.length() - 2 );
-    fdip = open( pdbfilez.c_str(), O_RDONLY );
+    fdip = open( pdbfilez.c_str(), MY_RDONLY );
     if ( fdip < 0 ) clipper::Message::message( nordc );
     fdop = open( pdbfile.c_str(), O_CREAT|O_WRONLY|O_TRUNC, S_IREAD|S_IWRITE );
     if ( fdop < 0 ) clipper::Message::message( nowrc );
@@ -161,7 +163,7 @@ int main( int argc, char** argv )
   if ( rflfilez.substr( rflfilez.length() - 2 ) == ".Z" ) {
     std::cout << "Decompressing reflections...\n\n";
     rflfile = rflfilez.substr( 0, rflfilez.length() - 2 );
-    fdip = open( rflfilez.c_str(), O_RDONLY );
+    fdip = open( rflfilez.c_str(), MY_RDONLY );
     if ( fdip < 0 ) clipper::Message::message( nordc );
     fdop = open( rflfile.c_str(), O_CREAT|O_WRONLY|O_TRUNC, S_IREAD|S_IWRITE );
     if ( fdop < 0 ) clipper::Message::message( nowrc );
