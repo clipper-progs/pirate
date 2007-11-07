@@ -11,9 +11,6 @@
  *   Peter Jannesen, Network Communication Systems
  *                       (peter@ncs.nl)
  *
- * Revision unlabelled: 04/11/02 cowtan@ysbl.york.ac.uk
- *   Add config.h for autoconf inclusion of HAVE_UTIME_H
- *
  * Revision unlabelled: 04/10/12 cowtan@ysbl.york.ac.uk
  *   Reduce to minimal subset for slow decompression.
  *
@@ -144,8 +141,6 @@
 #include	<sys/stat.h>
 #include	<errno.h>
 
-#include "config.h"
-
 #ifdef DIRENT
 #	include	<dirent.h>
 #	define	RECURSIVE		1
@@ -155,7 +150,7 @@
 #	include	<sys/dir.h>
 #	define	RECURSIVE		1
 #endif
-#ifdef HAVE_UTIME_H
+#ifdef UTIME_H
 #	include	<utime.h>
 #else
 	struct utimbuf {

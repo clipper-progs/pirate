@@ -25,6 +25,7 @@
 #include <unistd.h>
 #endif
 #if defined(_WIN32)
+#include <winsock2.h>
 #include <windows.h>
 #endif
 #include <stdio.h>
@@ -46,7 +47,7 @@
 #include <netdb.h>
 #include <inet.h>
 #elif defined(_WIN32)
-#include <winsock.h>
+#include <ws2tcpip.h>
 #endif
 
 #define BUILDING_LIBRARY
