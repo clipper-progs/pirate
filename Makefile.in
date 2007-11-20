@@ -59,53 +59,27 @@ POST_INSTALL = :
 NORMAL_UNINSTALL = :
 PRE_UNINSTALL = :
 POST_UNINSTALL = :
-host_alias = @host_alias@
-host_triplet = @host@
 
 EXEEXT = @EXEEXT@
 OBJEXT = @OBJEXT@
 PATH_SEPARATOR = @PATH_SEPARATOR@
 AMTAR = @AMTAR@
-AR = @AR@
 AR_FLAGS = @AR_FLAGS@
-AS = @AS@
 AWK = @AWK@
 CC = @CC@
 CCP4_CXXFLAGS = @CCP4_CXXFLAGS@
 CCP4_LIBS = @CCP4_LIBS@
-CCTBX_CXXFLAGS = @CCTBX_CXXFLAGS@
-CCTBX_LIBS = @CCTBX_LIBS@
-CLIPPER_CCP4_DIR = @CLIPPER_CCP4_DIR@
-CLIPPER_CCTBX_DIR = @CLIPPER_CCTBX_DIR@
-CLIPPER_CIF_DIR = @CLIPPER_CIF_DIR@
-CLIPPER_CNS_DIR = @CLIPPER_CNS_DIR@
-CLIPPER_CONTRIB_DIR = @CLIPPER_CONTRIB_DIR@
-CLIPPER_FORTRAN_DIR = @CLIPPER_FORTRAN_DIR@
-CLIPPER_MINIMOL_DIR = @CLIPPER_MINIMOL_DIR@
-CLIPPER_MMDBOLD_DIR = @CLIPPER_MMDBOLD_DIR@
-CLIPPER_MMDB_DIR = @CLIPPER_MMDB_DIR@
-CLIPPER_PHS_DIR = @CLIPPER_PHS_DIR@
+CLIPPER_CXXFLAGS = @CLIPPER_CXXFLAGS@
+CLIPPER_LIBS = @CLIPPER_LIBS@
 CXX = @CXX@
-CXXCPP = @CXXCPP@
 DEPDIR = @DEPDIR@
-DLLTOOL = @DLLTOOL@
-ECHO = @ECHO@
-EGREP = @EGREP@
-F77 = @F77@
 FFTW_CXXFLAGS = @FFTW_CXXFLAGS@
 FFTW_LIBS = @FFTW_LIBS@
-GCJ = @GCJ@
-GCJFLAGS = @GCJFLAGS@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
-LIBTOOL = @LIBTOOL@
-LN_S = @LN_S@
 MAINT = @MAINT@
 MMDB_CXXFLAGS = @MMDB_CXXFLAGS@
 MMDB_LIBS = @MMDB_LIBS@
-OBJDUMP = @OBJDUMP@
 PACKAGE = @PACKAGE@
-RANLIB = @RANLIB@
-RC = @RC@
 STRIP = @STRIP@
 VERSION = @VERSION@
 am__include = @am__include@
@@ -123,12 +97,9 @@ INCLUDES = $(FFTW_CXXFLAGS) $(MMDB_CXXFLAGS)  $(CCP4_CXXFLAGS) \
 
 LIBS = $(FFTW_LIBS) $(CCP4_LIBS) $(MMDB_LIBS) $(CCTBX_LIBS) @LIBS@
 
-LDADD = ../../clipper/contrib/libclipper-contrib.la ../../clipper/cif/libclipper-cif.la ../../clipper/mmdb/libclipper-mmdb.la ../../clipper/ccp4/libclipper-ccp4.la ../../clipper/phs/libclipper-phs.la ../../clipper/core/libclipper-core.la
-
 EXTRA_DIST = makereference.csh
 subdir = src/pirate
 mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
-CONFIG_HEADER = $(top_builddir)/config.h
 CONFIG_CLEAN_FILES =
 bin_PROGRAMS = cpirate$(EXEEXT) cmakereference$(EXEEXT)
 PROGRAMS = $(bin_PROGRAMS)
@@ -137,29 +108,18 @@ am_cmakereference_OBJECTS = cmakereference.$(OBJEXT) ftplib.$(OBJEXT) \
 	compress42.$(OBJEXT)
 cmakereference_OBJECTS = $(am_cmakereference_OBJECTS)
 cmakereference_LDADD = $(LDADD)
-cmakereference_DEPENDENCIES = \
-	../../clipper/contrib/libclipper-contrib.la \
-	../../clipper/cif/libclipper-cif.la \
-	../../clipper/mmdb/libclipper-mmdb.la \
-	../../clipper/ccp4/libclipper-ccp4.la \
-	../../clipper/phs/libclipper-phs.la \
-	../../clipper/core/libclipper-core.la
+cmakereference_DEPENDENCIES =
 cmakereference_LDFLAGS =
 am_cpirate_OBJECTS = cpirate.$(OBJEXT) simulate-lib.$(OBJEXT) \
 	pirate-lib.$(OBJEXT) pirate-ncsaver.$(OBJEXT) \
 	pirate-ncsfind.$(OBJEXT) simplex-lib.$(OBJEXT)
 cpirate_OBJECTS = $(am_cpirate_OBJECTS)
 cpirate_LDADD = $(LDADD)
-cpirate_DEPENDENCIES = ../../clipper/contrib/libclipper-contrib.la \
-	../../clipper/cif/libclipper-cif.la \
-	../../clipper/mmdb/libclipper-mmdb.la \
-	../../clipper/ccp4/libclipper-ccp4.la \
-	../../clipper/phs/libclipper-phs.la \
-	../../clipper/core/libclipper-core.la
+cpirate_DEPENDENCIES =
 cpirate_LDFLAGS =
 
 DEFS = @DEFS@
-DEFAULT_INCLUDES =  -I. -I$(srcdir) -I$(top_builddir)
+DEFAULT_INCLUDES =  -I. -I$(srcdir)
 CPPFLAGS = @CPPFLAGS@
 LDFLAGS = @LDFLAGS@
 depcomp = $(SHELL) $(top_srcdir)/depcomp
@@ -173,20 +133,14 @@ am__depfiles_maybe = depfiles
 @AMDEP_TRUE@	./$(DEPDIR)/simulate-lib.Po
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
-LTCOMPILE = $(LIBTOOL) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) \
-	$(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
 CCLD = $(CC)
-LINK = $(LIBTOOL) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
-	$(AM_LDFLAGS) $(LDFLAGS) -o $@
+LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
 CFLAGS = @CFLAGS@
 CXXCOMPILE = $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
 	$(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS)
-LTCXXCOMPILE = $(LIBTOOL) --mode=compile $(CXX) $(DEFS) \
-	$(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) \
-	$(AM_CXXFLAGS) $(CXXFLAGS)
 CXXLD = $(CXX)
-CXXLINK = $(LIBTOOL) --mode=link $(CXXLD) $(AM_CXXFLAGS) $(CXXFLAGS) \
-	$(AM_LDFLAGS) $(LDFLAGS) -o $@
+CXXLINK = $(CXXLD) $(AM_CXXFLAGS) $(CXXFLAGS) $(AM_LDFLAGS) $(LDFLAGS) \
+	-o $@
 CXXFLAGS = @CXXFLAGS@
 DIST_SOURCES = $(cmakereference_SOURCES) $(cpirate_SOURCES)
 DIST_COMMON = Makefile.am Makefile.in
@@ -195,7 +149,7 @@ SOURCES = $(cmakereference_SOURCES) $(cpirate_SOURCES)
 all: all-am
 
 .SUFFIXES:
-.SUFFIXES: .c .cpp .lo .o .obj
+.SUFFIXES: .c .cpp .o .obj
 $(srcdir)/Makefile.in: @MAINTAINER_MODE_TRUE@ Makefile.am  $(top_srcdir)/configure.ac $(ACLOCAL_M4)
 	cd $(top_srcdir) && \
 	  $(AUTOMAKE) --gnu  src/pirate/Makefile
@@ -208,11 +162,10 @@ install-binPROGRAMS: $(bin_PROGRAMS)
 	@list='$(bin_PROGRAMS)'; for p in $$list; do \
 	  p1=`echo $$p|sed 's/$(EXEEXT)$$//'`; \
 	  if test -f $$p \
-	     || test -f $$p1 \
 	  ; then \
 	    f=`echo "$$p1" | sed 's,^.*/,,;$(transform);s/$$/$(EXEEXT)/'`; \
-	   echo " $(INSTALL_PROGRAM_ENV) $(LIBTOOL) --mode=install $(binPROGRAMS_INSTALL) $$p $(DESTDIR)$(bindir)/$$f"; \
-	   $(INSTALL_PROGRAM_ENV) $(LIBTOOL) --mode=install $(binPROGRAMS_INSTALL) $$p $(DESTDIR)$(bindir)/$$f; \
+	   echo " $(INSTALL_PROGRAM_ENV) $(binPROGRAMS_INSTALL) $$p $(DESTDIR)$(bindir)/$$f"; \
+	   $(INSTALL_PROGRAM_ENV) $(binPROGRAMS_INSTALL) $$p $(DESTDIR)$(bindir)/$$f; \
 	  else :; fi; \
 	done
 
@@ -225,11 +178,7 @@ uninstall-binPROGRAMS:
 	done
 
 clean-binPROGRAMS:
-	@list='$(bin_PROGRAMS)'; for p in $$list; do \
-	  f=`echo $$p|sed 's/$(EXEEXT)$$//'`; \
-	  echo " rm -f $$p $$f"; \
-	  rm -f $$p $$f ; \
-	done
+	-test -z "$(bin_PROGRAMS)" || rm -f $(bin_PROGRAMS)
 cmakereference$(EXEEXT): $(cmakereference_OBJECTS) $(cmakereference_DEPENDENCIES) 
 	@rm -f cmakereference$(EXEEXT)
 	$(CXXLINK) $(cmakereference_LDFLAGS) $(cmakereference_OBJECTS) $(cmakereference_LDADD) $(LIBS)
@@ -267,12 +216,6 @@ distclean-depend:
 @AMDEP_TRUE@	depfile='$(DEPDIR)/$*.Po' tmpdepfile='$(DEPDIR)/$*.TPo' @AMDEPBACKSLASH@
 @AMDEP_TRUE@	$(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 	$(COMPILE) -c `cygpath -w $<`
-
-.c.lo:
-@AMDEP_TRUE@	source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@	depfile='$(DEPDIR)/$*.Plo' tmpdepfile='$(DEPDIR)/$*.TPlo' @AMDEPBACKSLASH@
-@AMDEP_TRUE@	$(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-	$(LTCOMPILE) -c -o $@ `test -f '$<' || echo '$(srcdir)/'`$<
 CCDEPMODE = @CCDEPMODE@
 
 .cpp.o:
@@ -286,22 +229,7 @@ CCDEPMODE = @CCDEPMODE@
 @AMDEP_TRUE@	depfile='$(DEPDIR)/$*.Po' tmpdepfile='$(DEPDIR)/$*.TPo' @AMDEPBACKSLASH@
 @AMDEP_TRUE@	$(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 	$(CXXCOMPILE) -c -o $@ `cygpath -w $<`
-
-.cpp.lo:
-@AMDEP_TRUE@	source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@	depfile='$(DEPDIR)/$*.Plo' tmpdepfile='$(DEPDIR)/$*.TPlo' @AMDEPBACKSLASH@
-@AMDEP_TRUE@	$(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-	$(LTCXXCOMPILE) -c -o $@ `test -f '$<' || echo '$(srcdir)/'`$<
 CXXDEPMODE = @CXXDEPMODE@
-
-mostlyclean-libtool:
-	-rm -f *.lo
-
-clean-libtool:
-	-rm -rf .libs _libs
-
-distclean-libtool:
-	-rm -f libtool
 uninstall-info-am:
 
 ETAGS = etags
@@ -398,12 +326,12 @@ maintainer-clean-generic:
 	@echo "it deletes files that may require special tools to rebuild."
 clean: clean-am
 
-clean-am: clean-binPROGRAMS clean-generic clean-libtool mostlyclean-am
+clean-am: clean-binPROGRAMS clean-generic mostlyclean-am
 
 distclean: distclean-am
 
 distclean-am: clean-am distclean-compile distclean-depend \
-	distclean-generic distclean-libtool distclean-tags
+	distclean-generic distclean-tags
 
 dvi: dvi-am
 
@@ -429,21 +357,19 @@ maintainer-clean-am: distclean-am maintainer-clean-generic
 
 mostlyclean: mostlyclean-am
 
-mostlyclean-am: mostlyclean-compile mostlyclean-generic \
-	mostlyclean-libtool
+mostlyclean-am: mostlyclean-compile mostlyclean-generic
 
 uninstall-am: uninstall-binPROGRAMS uninstall-info-am
 
 .PHONY: GTAGS all all-am check check-am clean clean-binPROGRAMS \
-	clean-generic clean-libtool distclean distclean-compile \
-	distclean-depend distclean-generic distclean-libtool \
-	distclean-tags distdir dvi dvi-am info info-am install \
-	install-am install-binPROGRAMS install-data install-data-am \
-	install-exec install-exec-am install-info install-info-am \
-	install-man install-strip installcheck installcheck-am \
-	installdirs maintainer-clean maintainer-clean-generic \
-	mostlyclean mostlyclean-compile mostlyclean-generic \
-	mostlyclean-libtool tags uninstall uninstall-am \
+	clean-generic distclean distclean-compile distclean-depend \
+	distclean-generic distclean-tags distdir dvi dvi-am info \
+	info-am install install-am install-binPROGRAMS install-data \
+	install-data-am install-exec install-exec-am install-info \
+	install-info-am install-man install-strip installcheck \
+	installcheck-am installdirs maintainer-clean \
+	maintainer-clean-generic mostlyclean mostlyclean-compile \
+	mostlyclean-generic tags uninstall uninstall-am \
 	uninstall-binPROGRAMS uninstall-info-am
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
