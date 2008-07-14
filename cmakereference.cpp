@@ -12,8 +12,8 @@ extern "C" {
  #include <io.h>
  #define MY_RDONLY O_RDONLY|O_BINARY
 #else
- #define MY_RDONLY O_RDONLY
  #include <unistd.h>
+ #define MY_RDONLY O_RDONLY
 #endif
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -181,7 +181,8 @@ int main( int argc, char** argv )
 
   // atomic model
   clipper::MMDBManager mmdb;
-  mmdb.SetFlag( MMDBF_AutoSerials | MMDBF_IgnoreDuplSeqNum );
+  const int mmdbflags = MMDBF_IgnoreBlankLines | MMDBF_IgnoreDuplSeqNum | MMDBF_IgnoreNonCoorPDBErrors | MMDBF_IgnoreRemarks;
+  mmdb.SetFlag( mmdbflags );
   mmdb.ReadPDBASCII( (char*)pdbfile.c_str() );
 
   // read reflection info
