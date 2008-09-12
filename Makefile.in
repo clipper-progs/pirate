@@ -90,6 +90,8 @@ cecalc_LDFLAGS = @cecalc_LDFLAGS@
 cfft_LDFLAGS = @cfft_LDFLAGS@
 chltofom_LDFLAGS = @chltofom_LDFLAGS@
 cinvfft_LDFLAGS = @cinvfft_LDFLAGS@
+cmakereference_LDFLAGS = @cmakereference_LDFLAGS@
+cmaplocal_LDFLAGS = @cmaplocal_LDFLAGS@
 convert2mtz_LDFLAGS = @convert2mtz_LDFLAGS@
 cpatterson_LDFLAGS = @cpatterson_LDFLAGS@
 cphasecombine_LDFLAGS = @cphasecombine_LDFLAGS@
@@ -125,7 +127,6 @@ am_cmakereference_OBJECTS = cmakereference.$(OBJEXT) ftplib.$(OBJEXT) \
 cmakereference_OBJECTS = $(am_cmakereference_OBJECTS)
 cmakereference_LDADD = $(LDADD)
 cmakereference_DEPENDENCIES =
-cmakereference_LDFLAGS =
 am_cpirate_OBJECTS = cpirate.$(OBJEXT) simulate-lib.$(OBJEXT) \
 	pirate-lib.$(OBJEXT) pirate-ncsaver.$(OBJEXT) \
 	pirate-ncsfind.$(OBJEXT) simplex-lib.$(OBJEXT)
