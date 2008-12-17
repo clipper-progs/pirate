@@ -94,6 +94,7 @@ cinvfft_LDFLAGS = @cinvfft_LDFLAGS@
 cmakereference_LDFLAGS = @cmakereference_LDFLAGS@
 cmaplocal_LDFLAGS = @cmaplocal_LDFLAGS@
 convert2mtz_LDFLAGS = @convert2mtz_LDFLAGS@
+cparrot_LDFLAGS = @cparrot_LDFLAGS@
 cpatterson_LDFLAGS = @cpatterson_LDFLAGS@
 cphasecombine_LDFLAGS = @cphasecombine_LDFLAGS@
 cphasematch_LDFLAGS = @cphasematch_LDFLAGS@
