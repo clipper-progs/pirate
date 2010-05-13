@@ -126,14 +126,22 @@ bool MapSimulate::operator()
   // Transfer foms to reference structure
   for ( int i = 0; i < n_res_bins; i++ ) {
     for ( int j = 0; j < ref_acen[i].size(); j++ ) {
-      int k = clipper::Util::intf(double(j)*double(wrk_acen[i].size())
-				           /double(ref_acen[i].size()));
-      ref_phi[ref_acen[i][j]].fom() = wrk_phi[wrk_acen[i][k]].fom();
+      if ( wrk_acen[i].size() != 0 && ref_acen[i].size() != 0 ) {
+	int k = clipper::Util::intf(double(j)*double(wrk_acen[i].size())
+				             /double(ref_acen[i].size()));
+	ref_phi[ref_acen[i][j]].fom() = wrk_phi[wrk_acen[i][k]].fom();
+      } else {
+	ref_phi[ref_acen[i][j]].set_null();
+      }
     }
     for ( int j = 0; j < ref_ccen[i].size(); j++ ) {
-      int k = clipper::Util::intf(double(j)*double(wrk_ccen[i].size())
-				           /double(ref_ccen[i].size()));
-      ref_phi[ref_ccen[i][j]].fom() = wrk_phi[wrk_ccen[i][k]].fom();
+      if ( wrk_ccen[i].size() != 0 && ref_ccen[i].size() != 0 ) {
+	int k = clipper::Util::intf(double(j)*double(wrk_ccen[i].size())
+				             /double(ref_ccen[i].size()));
+	ref_phi[ref_ccen[i][j]].fom() = wrk_phi[wrk_ccen[i][k]].fom();
+      } else {
+	ref_phi[ref_ccen[i][j]].set_null();
+      }
     }
   }
 
@@ -158,7 +166,7 @@ bool MapSimulate::operator()
       }
       if ( i == 100 ) dphi = 0.0;
     }
-    ref_phi[ih].phi() += dphi;
+    if ( !ref_phi[ih].missing() ) ref_phi[ih].phi() += dphi;
   }
 
   // calculate sim hl coeffs
