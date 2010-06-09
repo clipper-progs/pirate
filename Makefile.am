@@ -4,10 +4,10 @@ cpirate_SOURCES = cpirate.cpp simulate-lib.cpp pirate-lib.cpp pirate-ncsaver.cpp
 
 cmakereference_SOURCES = cmakereference.cpp ftplib.h ftplib.c compress42.c
 
-INCLUDES = $(CLIPPER_CXXFLAGS) $(FFTW_CXXFLAGS) $(MMDB_CXXFLAGS)  $(CCP4_CXXFLAGS) \
+INCLUDES = $(PTHREAD_CFLAGS) $(CLIPPER_CXXFLAGS) $(FFTW_CXXFLAGS) $(MMDB_CXXFLAGS)  $(CCP4_CXXFLAGS) \
 	   -I$(includedir)
 
-LIBS = $(CLIPPER_LIBS) $(FFTW_LIBS) $(CCP4_LIBS) $(MMDB_LIBS) $(CCTBX_LIBS) @LIBS@
+LIBS = $(PTHREAD_CFLAGS) $(CLIPPER_LIBS) $(FFTW_LIBS) $(CCP4_LIBS) $(MMDB_LIBS) $(CCTBX_LIBS) $(PTHREAD_LIBS) @LIBS@
 
 EXTRA_DIST = makereference.csh
 
