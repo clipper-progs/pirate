@@ -168,6 +168,7 @@ cinvfft_LDFLAGS = @cinvfft_LDFLAGS@
 cmakereference_LDFLAGS = @cmakereference_LDFLAGS@
 cmaplocal_LDFLAGS = @cmaplocal_LDFLAGS@
 cmodeltoseq_LDFLAGS = @cmodeltoseq_LDFLAGS@
+cnsfrommodel_LDFLAGS = @cnsfrommodel_LDFLAGS@
 convert2mtz_LDFLAGS = @convert2mtz_LDFLAGS@
 cparrot_LDFLAGS = @cparrot_LDFLAGS@
 cpatterson_LDFLAGS = @cpatterson_LDFLAGS@
