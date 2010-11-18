@@ -178,6 +178,7 @@ cpirate_LDFLAGS = @cpirate_LDFLAGS@
 csequins_LDFLAGS = @csequins_LDFLAGS@
 csfcalc_LDFLAGS = @csfcalc_LDFLAGS@
 csigmaa_LDFLAGS = @csigmaa_LDFLAGS@
+csloop_LDFLAGS = @csloop_LDFLAGS@
 csymmatch_LDFLAGS = @csymmatch_LDFLAGS@
 ctruncate_LDFLAGS = @ctruncate_LDFLAGS@
 datadir = @datadir@
