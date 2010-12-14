@@ -5,6 +5,9 @@
 
 #include <clipper/clipper-ccp4.h>
 
+extern "C" {
+#include <stdlib.h>
+}
 
 // Histogram smoother
 

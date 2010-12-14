@@ -8,6 +8,10 @@
 #include "pirate-lib.h"
 #include <time.h>
 
+extern "C" {
+#include <stdlib.h>
+}
+
 
 int main( int argc, char** argv )
 {

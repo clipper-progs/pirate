@@ -2,6 +2,10 @@
 /* Copyright 2003-2006 Kevin Cowtan & University of York all rights reserved */
 
 #include "simulate-lib.h"
+#include <algorithm>
+extern "C" {
+#include <stdlib.h>
+}
 
 
 MapSimulate::MapSimulate( int nresbins, int binmin )

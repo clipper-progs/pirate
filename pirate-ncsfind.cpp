@@ -2,6 +2,7 @@
 /* Copyright 2003-2006 Kevin Cowtan & University of York all rights reserved */
 
 #include "pirate-ncsfind.h"
+#include <algorithm>
 
 
 struct Compare_pair_score_rotation{ bool operator() ( const std::pair<double,clipper::Rotation>& r1, const std::pair<double,clipper::Rotation>& r2 ) const { return ( r1.first < r2.first ); } };
