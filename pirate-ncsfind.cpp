@@ -4,6 +4,9 @@
 #include "pirate-ncsfind.h"
 #include <algorithm>
 
+#ifdef rad2 // defined on Windows
+# undef rad2
+#endif
 
 struct Compare_pair_score_rotation{ bool operator() ( const std::pair<double,clipper::Rotation>& r1, const std::pair<double,clipper::Rotation>& r2 ) const { return ( r1.first < r2.first ); } };
 

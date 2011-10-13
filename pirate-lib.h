@@ -8,6 +8,10 @@
 
 #include "pirate-ncsaver.h"
 
+#ifdef rad1 // defined on Windows
+# undef rad1
+# undef rad2
+#endif
 
 //! Reflection data type: Argand gradient
 typedef clipper::data32::F_phi ArgGrad;
