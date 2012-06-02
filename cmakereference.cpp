@@ -9,7 +9,7 @@
 
 extern "C" {
 #include <stdlib.h>
-#if defined _MSC_VER
+#if defined _WIN32
  #include <io.h>
  #define MY_RDONLY O_RDONLY|O_BINARY
 #else
