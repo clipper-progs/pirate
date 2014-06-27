@@ -235,14 +235,14 @@ int main( int argc, char** argv )
   if ( ipfile_ha != "NONE" ) {
     // atomic model
     clipper::MMDBManager mmdb;
-    mmdb.SetFlag( MMDBF_AutoSerials | MMDBF_IgnoreDuplSeqNum );
+    mmdb.SetFlag( ::mmdb::MMDBF_AutoSerials | ::mmdb::MMDBF_IgnoreDuplSeqNum );
     mmdb.ReadPDBASCII( (char*)ipfile_ha.c_str() );
 
     // get a list of all the atoms
     clipper::mmdb::PPCAtom psel;
     int hndl, nsel;
     hndl = mmdb.NewSelection();
-    mmdb.SelectAtoms( hndl, 0, 0, SKEY_NEW );
+    mmdb.SelectAtoms( hndl, 0, 0, ::mmdb::SKEY_NEW );
     mmdb.GetSelIndex( hndl, psel, nsel );
     clipper::MMDBAtom_list atoms( psel, nsel );
     mmdb.DeleteSelection( hndl );
