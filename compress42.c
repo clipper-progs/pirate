@@ -133,6 +133,9 @@
  *   Add variable bit length output.
  *
  */
+#if defined(__unix__) || defined(__VMS) || defined (__APPLE__) || defined (unix)
+#include <unistd.h>
+#endif
 #include	<stdio.h>
 #include        <stdlib.h>
 #include        <string.h>
